@@ -1,2 +1,2 @@
-# Sels.ChiaBlockchain
-Repository containing projects that have to do with the Chia BlockChain
+# Sels.Crypto.Chia
+Repository containing projects for the Chia blockchain
