@@ -1,0 +1,10 @@
+﻿{
+  "profiles": {
+    "Sels.Crypto.Chia.PlotBot": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

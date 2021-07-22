@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31424.327
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.Crypto.Chia.PlotBot", "Sels.Crypto.Chia.PlotBot\Sels.Crypto.Chia.PlotBot.csproj", "{2F04DC0A-C422-4103-9C13-A1C6AD0E7379}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{1201622F-A846-4D53-9A1D-DCD094CB52A1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.Core", "..\Sels.Core\Sels.Core\Sels.Core.csproj", "{BA75CF0F-E73C-40AA-8EF8-6276475620E9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.Core.Linux", "..\Sels.Core\Sels.Core.Linux\Sels.Core.Linux.csproj", "{EFC30434-BE62-423E-B089-4AC43F74BDB3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.ObjectValidationFramework", "..\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework.csproj", "{32DD3858-B303-45EF-ADF3-699A01FDB664}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2F04DC0A-C422-4103-9C13-A1C6AD0E7379}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F04DC0A-C422-4103-9C13-A1C6AD0E7379}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F04DC0A-C422-4103-9C13-A1C6AD0E7379}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F04DC0A-C422-4103-9C13-A1C6AD0E7379}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA75CF0F-E73C-40AA-8EF8-6276475620E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA75CF0F-E73C-40AA-8EF8-6276475620E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA75CF0F-E73C-40AA-8EF8-6276475620E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA75CF0F-E73C-40AA-8EF8-6276475620E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EFC30434-BE62-423E-B089-4AC43F74BDB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFC30434-BE62-423E-B089-4AC43F74BDB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EFC30434-BE62-423E-B089-4AC43F74BDB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EFC30434-BE62-423E-B089-4AC43F74BDB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BA75CF0F-E73C-40AA-8EF8-6276475620E9} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
+		{EFC30434-BE62-423E-B089-4AC43F74BDB3} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
+		{32DD3858-B303-45EF-ADF3-699A01FDB664} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FD25389E-D21F-439A-B419-885FFD2C6596}
+	EndGlobalSection
+EndGlobal
