@@ -41,10 +41,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// <summary>
         /// Max Size in GiB that a plot takes up when being created.
         /// </summary>
-        public double CreationSize { get; set; }
+        public decimal CreationSize { get; set; }
         /// <summary>
         /// How large the final plot size is in GiB.
         /// </summary>
-        public double FinalSize { get; set; }
+        public decimal FinalSize { get; set; }
     }
 }
