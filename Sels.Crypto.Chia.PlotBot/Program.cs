@@ -64,13 +64,10 @@ namespace Sels.Crypto.Chia.PlotBot
             // Read config
             var configProvider = context.Properties[ConfigProviderKey].As<IConfigProvider>();
             var minLogLevel = configProvider.GetAppSetting<LogLevel>(PlotBotConstants.Config.AppSettings.MinLogLevel);
-            var logDirectory = configProvider.GetAppSetting(PlotBotConstants.Config.AppSettings.LogDirectory);
-            var archiveSize = configProvider.GetAppSetting<long>(PlotBotConstants.Config.AppSettings.ArchiveSize);
+            var logDirectory = configProvider.GetAppSetting(PlotBotConstants.Config.AppSettings.LogDirectory, true, x => x.HasValue() && Directory.Exists(x), x => $"Directory cannot be empty and Directory must exist on the file system. Was <{x}>");
+            var archiveSize = configProvider.GetAppSetting<long>(PlotBotConstants.Config.AppSettings.ArchiveSize, true, x => x > 1, x => $"File size cannot be empty and file size must be above 1 {MegaByte.FileSizeAbbreviation}");
             var archiveFileSize = FileSize.CreateFromSize<MegaByte>(archiveSize);
 
-            logDirectory.ValidateArgument(x => x.HasValue(), x => new ConfigurationMissingException(PlotBotConstants.Config.AppSettings.LogDirectory, Constants.Config.Sections.AppSettings, Constants.Config.DefaultAppSettingsFile));
-            logDirectory.ValidateArgument(x => Directory.Exists(x), x => new MisconfiguredException(PlotBotConstants.Config.AppSettings.LogDirectory, Constants.Config.Sections.AppSettings, Constants.Config.DefaultAppSettingsFile, "Directory must exist on the file system"));
-            archiveFileSize.ValidateArgument(x => x.Size > 1, x => new MisconfiguredException(PlotBotConstants.Config.AppSettings.ArchiveSize, Constants.Config.Sections.AppSettings, Constants.Config.DefaultAppSettingsFile, $"File size must be above 1 {archiveFileSize.Abbreviation}"));
             var logDirectoryInfo = new DirectoryInfo(logDirectory);
             var minLogLevelOrdinal = minLogLevel.ConvertTo<int>();
 
@@ -109,7 +106,8 @@ namespace Sels.Crypto.Chia.PlotBot
                 FileName = Path.Combine(logDirectory.FullName, $"{targetName}.txt"),
                 ArchiveFileName = Path.Combine(logDirectory.FullName, PlotBotConstants.Logging.ArchiveFolder, $"{targetName}_{{###}}.txt"),
                 ArchiveAboveSize = archiveSize.ByteSize,
-                ArchiveNumbering = ArchiveNumberingMode.DateAndSequence
+                ArchiveNumbering = ArchiveNumberingMode.DateAndSequence,
+                ConcurrentWrites = false
             };
         }
     }

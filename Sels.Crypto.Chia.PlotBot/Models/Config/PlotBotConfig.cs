@@ -18,5 +18,16 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// What drives to plot to.
         /// </summary>
         public DriveConfig[] Drives { get; set; }
+
+        // Statics
+        /// <summary>
+        /// Default instance.
+        /// </summary>
+        public static PlotBotConfig Default => new PlotBotConfig()
+        {
+            Settings = PlotBotSettingsConfig.Default,
+            Plotters = new PlotterConfig[] { PlotterConfig.Default },
+            Drives = new DriveConfig[] { DriveConfig.Default }
+        };
     }
 }

@@ -30,6 +30,18 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// </summary>
         public PlotSizeConfig[] PlotSizes { get; set; }
 
+        // Statics
+        /// <summary>
+        /// Default instance.
+        /// </summary>
+        public static PlotBotSettingsConfig Default => new PlotBotSettingsConfig()
+        {
+            PoolKey = "MyPoolKey",
+            PoolContractAddress = "MyPoolContractAddress",
+            FarmerKey = "MyFarmerKey",
+            DefaultPlotCommand = PlotBotConstants.Settings.DefaultCommand,
+            PlotSizes = new PlotSizeConfig[] { PlotSizeConfig.Default }
+        };
     }
 
     public class PlotSizeConfig
@@ -46,5 +58,16 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// How large the final plot size is in GiB.
         /// </summary>
         public decimal FinalSize { get; set; }
+
+        // Statics
+        /// <summary>
+        /// Default instance.
+        /// </summary>
+        public static PlotSizeConfig Default => new PlotSizeConfig()
+        {
+            Name = PlotBotConstants.Settings.Plotter.DefaultPlotSize,
+            CreationSize = 220,
+            FinalSize = 101.4M
+        };
     }
 }
