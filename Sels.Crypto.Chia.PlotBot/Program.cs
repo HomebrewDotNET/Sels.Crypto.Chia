@@ -17,10 +17,14 @@ using System.IO;
 using NLog.Extensions.Logging;
 using NLog.Config;
 using NLog.Targets;
-using Sels.Core.Templates.FileSize;
-using Sels.Core.Components.FileSize.Byte;
+using Sels.Core.Templates.FileSizes;
+using Sels.Core.Components.FileSizes.Byte;
 using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Crypto.Chia.PlotBot.ValidationProfiles;
+using Sels.Core.Components.FileSystem;
+using Sels.Crypto.Chia.PlotBot.Factories;
+using Sels.Core.Components.Factory;
+using Sels.Core.Components.Conversion;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -40,8 +44,13 @@ namespace Sels.Crypto.Chia.PlotBot
                 {
                     // Register services
                     services.AddHostedService<PlotBotManager>();
+                    services.AddSingleton<PlotBot>();
                     services.AddSingleton<IConfigProvider, ConfigProvider>();
                     services.AddSingleton<IPlotBotConfigValidator, ConfigValidationProfile>();
+                    services.AddSingleton<IFactory<CrossPlatformDirectory>, LinuxDirectoryFactory>();
+                    services.AddSingleton<IObjectFactory, AliasTypeFactory>(x => {
+                        return new AliasTypeFactory(x.GetRequiredService<IConfigProvider>(), GenericConverter.DefaultConverter);
+                    });
 
 
                     // Setup service factory
@@ -83,12 +92,13 @@ namespace Sels.Crypto.Chia.PlotBot
             config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotCritical, logDirectoryInfo, archiveFileSize));
 
             // Create rules
+            var nlogMinLevel = NLog.LogLevel.FromOrdinal(minLogLevelOrdinal);
             // Skip microsoft logs
             config.AddRule(NLog.LogLevel.Debug, NLog.LogLevel.Info, new NullTarget(), PlotBotConstants.Logging.Categories.Microsoft, true);
             // All logs
-            config.AddRule(NLog.LogLevel.FromOrdinal(minLogLevelOrdinal), NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotAll);
+            config.AddRule(nlogMinLevel, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotAll);
             // All errors
-            config.AddRule(minLogLevelOrdinal >= NLog.LogLevel.Warn.Ordinal ? NLog.LogLevel.FromOrdinal(minLogLevelOrdinal) : NLog.LogLevel.Warn, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotError);
+            config.AddRule(minLogLevelOrdinal >= NLog.LogLevel.Warn.Ordinal ? nlogMinLevel : NLog.LogLevel.Warn, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotError);
             // Fatal errors only
             config.AddRule(NLog.LogLevel.Fatal, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotCritical);
 

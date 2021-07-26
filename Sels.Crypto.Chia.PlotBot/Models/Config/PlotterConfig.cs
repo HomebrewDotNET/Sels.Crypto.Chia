@@ -16,23 +16,23 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// <summary>
         /// Size of plots that this plotter will create.
         /// </summary>
-        public string PlotSize { get; set; } = PlotBotConstants.Settings.Plotter.DefaultPlotSize;
+        public string PlotSize { get; set; } = PlotBotConstants.Settings.Plotters.DefaultPlotSize;
         /// <summary>
         /// How many instances this plotter can use.
         /// </summary>
-        public int MaxInstances { get; set; } = PlotBotConstants.Settings.Plotter.DefaultInstances;
+        public int MaxInstances { get; set; } = PlotBotConstants.Settings.Plotters.DefaultInstances;
         /// <summary>
         /// Total amount of thread this plotter can use. Threads are divided between all instances.
         /// </summary>
-        public int TotalThreads { get; set; } = PlotBotConstants.Settings.Plotter.DefaultThreads;
+        public int TotalThreads { get; set; } = PlotBotConstants.Settings.Plotters.DefaultThreads;
         /// <summary>
         /// Total amount fo ram this plotter can use. Ram is divided between all instances.
         /// </summary>
-        public int TotalRam { get; set; } = PlotBotConstants.Settings.Plotter.DefaultRam;
+        public int TotalRam { get; set; } = PlotBotConstants.Settings.Plotters.DefaultRam;
         /// <summary>
         /// How many buckets this plotter uses to plot.
         /// </summary>
-        public int Buckets { get; set; } = PlotBotConstants.Settings.Plotter.DefaultBuckets;
+        public int Buckets { get; set; } = PlotBotConstants.Settings.Plotters.DefaultBuckets;
         /// <summary>
         /// Command that starts a new process that creates plots. If left empty the <see cref="PlotBotSettingsConfig.DefaultPlotCommand"/> will be used.
         /// </summary>
@@ -76,7 +76,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// <summary>
         /// If we should archive progress files once a plot instance is done plotting. Can be handy to keep a history.
         /// </summary>
-        public bool ArchiveProgressFiles { get; set; } = PlotBotConstants.Settings.Plotter.Directory.DefaultArchiveProgressFiles;
+        public bool ArchiveProgressFiles { get; set; } = PlotBotConstants.Settings.Plotters.Directory.DefaultArchiveProgressFiles;
 
         // Statics
         /// <summary>

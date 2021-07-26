@@ -20,7 +20,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// <summary>
         /// Optional priority. Used to give priority to drives so some are filled up faster.
         /// </summary>
-        public int Priority { get; set; } = PlotBotConstants.Settings.Drive.DefaultPriority;
+        public int Priority { get; set; } = PlotBotConstants.Settings.Drives.DefaultPriority;
 
         // Statics
         /// <summary>

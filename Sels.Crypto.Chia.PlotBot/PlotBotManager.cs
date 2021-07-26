@@ -15,6 +15,8 @@ using Sels.Core.Extensions.Conversion;
 using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Crypto.Chia.PlotBot.Exceptions;
 using System.Security.Cryptography;
+using Sels.Core.Components.FileSystem;
+using Sels.Core.Contracts.Factory;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -38,10 +40,11 @@ namespace Sels.Crypto.Chia.PlotBot
         /// </summary>
         public int PollingInterval { get; private set; }
 
-        public PlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator)
+        public PlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator, PlotBot plotBot)
         {
             factory.ValidateArgument(nameof(factory));
             _configValidator = configValidator.ValidateArgument(nameof(configValidator));
+            _plotBot = plotBot.ValidateArgument(nameof(plotBot));
 
             SetupLogging(factory.CreateLogger(PlotBotConstants.LoggerName));
             LoadServiceConfig(configProvider.ValidateArgument(nameof(configProvider)));
@@ -76,7 +79,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 var plotBotConfigFile = LoadPlotBotConfig();
 
                 LoggingServices.Log($"Configuration file <{PlotBotConfigFile.FullName}> is valid.");
-                _plotBot = new PlotBot(plotBotConfigFile);
+                _plotBot.ReloadConfig(plotBotConfigFile);
 
                 return true;
             }
@@ -108,14 +111,19 @@ namespace Sels.Crypto.Chia.PlotBot
                                 try
                                 {
                                     var newConfig = LoadPlotBotConfig();
+                                    var canSafeReload = CanConfigBeSafelyReloaded(newConfig);
 
-                                    if (CanConfigBeSafelyReloaded(newConfig))
+                                    if (!canSafeReload && _plotBot.Plotters.Any(x => x.HasRunningInstances))
                                     {
-                                        // Todo
+                                        LoggingServices.Log(LogLevel.Warning, $"Config cannot be safely hot reloaded. Waiting for current plotting instances to finish so config can be fully reloaded");
+                                        _plotBot.CanStartNewInstances = false;
                                     }
                                     else
                                     {
-                                        LoggingServices.Log(LogLevel.Warning, $"Config cannot be safely hot reloaded. Waiting for current plotting instances to finish so config can be fully reloaded");
+                                        // Safe to reload
+                                        LoggingServices.Log($"{PlotBotConstants.ServiceName} doesn't have any instances running so config can be safely reloaded. Reloading config");
+                                        _plotBot.ReloadConfig(newConfig);
+                                        _plotBot.CanStartNewInstances = true;
                                     }
                                 }
                                 catch (Exception ex)
@@ -139,6 +147,7 @@ namespace Sels.Crypto.Chia.PlotBot
             catch(Exception ex)
             {
                 LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} ran into a fatal issue and could not continue to run:", ex);
+                throw;
             }
             finally
             {

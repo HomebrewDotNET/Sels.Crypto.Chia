@@ -43,7 +43,7 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             public static string DefaultCommand = $"/opt/chia-plotter/build/chia_plot -n 1 -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/{Parameters.DriveAlias}/{Parameters.PlotterAlias}/{Parameters.PlotterInstance} -2 {Parameters.CacheTwo}/{Parameters.DriveAlias}/{Parameters.PlotterAlias}/{Parameters.PlotterInstance} -d {Parameters.Destination} -p {Parameters.PoolKey} -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
 
-            public static class Plotter
+            public static class Plotters
             {
                 public const string DefaultPlotSize = "K32";
                 public const int DefaultInstances = 1;
@@ -57,7 +57,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 }
             }
 
-            public static class Drive
+            public static class Drives
             {
                 public const int DefaultPriority = 1;
             }

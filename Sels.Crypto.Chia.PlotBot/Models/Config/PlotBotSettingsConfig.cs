@@ -42,6 +42,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
             DefaultPlotCommand = PlotBotConstants.Settings.DefaultCommand,
             PlotSizes = new PlotSizeConfig[] { PlotSizeConfig.Default }
         };
+
+        internal object First()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class PlotSizeConfig
@@ -65,7 +70,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// </summary>
         public static PlotSizeConfig Default => new PlotSizeConfig()
         {
-            Name = PlotBotConstants.Settings.Plotter.DefaultPlotSize,
+            Name = PlotBotConstants.Settings.Plotters.DefaultPlotSize,
             CreationSize = 220,
             FinalSize = 101.4M
         };
