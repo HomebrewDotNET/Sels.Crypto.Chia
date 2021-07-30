@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.Core.Linux", "..\Sels.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.ObjectValidationFramework", "..\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework.csproj", "{32DD3858-B303-45EF-ADF3-699A01FDB664}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sels.Core.Unity", "..\Sels.Core\Sels.Core.Unity\Sels.Core.Unity.csproj", "{F07D0560-851F-41CE-BDCE-FFBE551ABB7C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +37,10 @@ Global
 		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32DD3858-B303-45EF-ADF3-699A01FDB664}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F07D0560-851F-41CE-BDCE-FFBE551ABB7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F07D0560-851F-41CE-BDCE-FFBE551ABB7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F07D0560-851F-41CE-BDCE-FFBE551ABB7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F07D0560-851F-41CE-BDCE-FFBE551ABB7C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -43,6 +49,7 @@ Global
 		{BA75CF0F-E73C-40AA-8EF8-6276475620E9} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
 		{EFC30434-BE62-423E-B089-4AC43F74BDB3} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
 		{32DD3858-B303-45EF-ADF3-699A01FDB664} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
+		{F07D0560-851F-41CE-BDCE-FFBE551ABB7C} = {1201622F-A846-4D53-9A1D-DCD094CB52A1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FD25389E-D21F-439A-B419-885FFD2C6596}

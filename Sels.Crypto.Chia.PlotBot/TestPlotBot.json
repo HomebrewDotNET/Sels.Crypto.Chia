@@ -1,0 +1,50 @@
+{
+  "Settings": {
+    "PoolKey": "MyPoolKey",
+    "PoolContractAddress": "MyPoolContractAddress",
+    "FarmerKey": "MyFarmerKey",
+    "DefaultPlotCommand": "/opt/chia-plotter/build/chia_plot -n 1 -r ${{Threads}} -u ${{Buckets}} -t ${{$Cache_1}}/${{DriveAlias}}/${{PlotterAlias}}/${{PlotterInstance}} -2 ${{$Cache_2}}/${{DriveAlias}}/${{PlotterAlias}}/${{PlotterInstance}} -d ${{$Destination}} -f ${{FarmerKey}} -c ${{PoolContractAddress}} -w",
+    "PlotSizes": [
+      {
+        "Name": "K32",
+        "CreationSize": 220.0,
+        "FinalSize": 101.4
+      }
+    ]
+  },
+  "Plotters": [
+    {
+      "Enabled": true,
+      "Alias": "MainPlotter",
+      "PlotSize": "K32",
+      "MaxInstances": 1,
+      "TotalThreads": 4,
+      "TotalRam": 4000,
+      "Buckets": 128,
+      "PlotCommand": null,
+      "WorkingDirectories": {
+        "Caches": [
+          "/mnt/g/Cache/Temp",
+          "/mnt/g/Cache"
+        ],
+        "WorkingDirectory": "/mnt/g/App",
+        "ArchiveProgressFiles": true
+      },
+      "DelaySettings": [
+        {
+          "Name": "ProgressFile",
+          "Arguments": [
+            "Phase 1 took"
+          ]
+        }
+      ]
+    }
+  ],
+  "Drives": [
+    {
+      "Alias": "ChiaDriveOne",
+      "Directory": "/mnt/c",
+      "Priority": 1
+    }
+  ]
+}
