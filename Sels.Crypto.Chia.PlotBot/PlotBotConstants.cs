@@ -12,6 +12,7 @@ namespace Sels.Crypto.Chia.PlotBot
         public static class Logging
         {
             public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message} ${exception}";
+            public const string FullLayout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message} ${newline}${exception:format=tostring}";
             public const string ArchiveFolder = "Archive";
 
             public static class Categories
@@ -31,6 +32,8 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             public static class AppSettings
             {
+                public const string DevMode = "PlotBot.Service.DevMode";
+                public const string TestMode = "PlotBot.Service.TestMode";
                 public const string ConfigFile = "PlotBot.Service.ConfigFile";
                 public const string Interval = "PlotBot.Service.Interval";
                 public const string MinLogLevel = "PlotBot.Logging.MinLevel";
@@ -41,7 +44,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Settings
         {
-            public static string DefaultCommand = $"/opt/chia-plotter/build/chia_plot -n 1 -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/{Parameters.DriveAlias}/{Parameters.PlotterAlias}/{Parameters.PlotterInstance} -2 {Parameters.CacheTwo}/{Parameters.DriveAlias}/{Parameters.PlotterAlias}/{Parameters.PlotterInstance} -d {Parameters.Destination} -p {Parameters.PoolKey} -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
+            public static string DefaultCommand = $"/opt/chia-plotter/build/chia_plot -n 1 -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/ -2 {Parameters.CacheTwo}/ -d {Parameters.Destination}/ -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
 
             public static class Plotters
             {
@@ -70,28 +73,48 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string TimeStarted = "TimeStarted";
                 public const int TimeStartedDefaultArg = 60;
 
-                public const string ProgressFileContains = "ProgressFileContains";
+                public const string ProgressFileContains = "ProgressFile";
                 public const string ProgressFileContainsDefaultArg = "Phase 1 took";
             }
         }
 
         public static class Parameters
         {
-            public const string PlotterAlias = "${PlotterAlias}";
-            public const string PlotterInstance = "${PlotterInstance}";
-            public const string DriveAlias = "${PlotterAlias}";
+            public static class Names
+            {
+                public const string PlotterAlias = "PlotterAlias";
+                public const string PlotterInstance = "PlotterInstance";
+                public const string DriveAlias = "DriveAlias";
 
-            public const string PlotSize = "${PlotSize}";
-            public const string Threads = "${Threads}";
-            public const string Buckets = "${Buckets}";
-            public const string Ram = "${Ram}";
-            public const string Destination = "Destination";
-            public const string PoolKey = "${PoolKey}";
-            public const string PoolContractAddress = "${PoolContractAddress}";
-            public const string FarmerKey = "${FarmerKey}";
+                public const string PlotSize = "PlotSize";
+                public const string Threads = "Threads";
+                public const string Buckets = "Buckets";
+                public const string Ram = "Ram";
+                public const string Destination = "$Destination";
+                public const string PoolKey = "PoolKey";
+                public const string PoolContractAddress = "PoolContractAddress";
+                public const string FarmerKey = "FarmerKey";
 
-            public const string CacheOne = "${Cache_1}";
-            public const string CacheTwo = "${Cache_2}";
+                public const string Cache = "$Cache";
+            }
+
+            public const string PlotterAlias = "${{" + Names.PlotterAlias + "}}";
+            public const string PlotterInstance = "${{" + Names.PlotterInstance + "}}";
+            public const string DriveAlias = "${{" + Names.DriveAlias + "}}";
+
+            public const string PlotSize = "${{" + Names.PlotSize + "}}";
+            public const string Threads = "${{" + Names.Threads + "}}";
+            public const string Buckets = "${{" + Names.Buckets + "}}";
+            public const string Ram = "${{" + Names.Ram + "}}";
+            public const string Destination = "${{" + Names.Destination + "}}";
+            public const string PoolKey = "${{" + Names.PoolKey + "}}";
+            public const string PoolContractAddress = "${{" + Names.PoolContractAddress + "}}";
+            public const string FarmerKey = "${{" + Names.FarmerKey + "}}";
+
+            
+            public const string CacheOne = "${{" + Names.Cache + "_1}}";
+            public const string CacheTwo = "${{" + Names.Cache + "_2}}";
         }
+
     }
 }

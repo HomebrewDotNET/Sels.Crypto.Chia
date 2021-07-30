@@ -10,6 +10,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
     public class PlotterConfig
     {
         /// <summary>
+        /// Boolean indicating if this plotter is allowed to start new instances.
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+        /// <summary>
         /// Unique name to identifiy this plotter config.
         /// </summary>
         public string Alias { get; set; }

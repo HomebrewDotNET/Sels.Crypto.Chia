@@ -25,6 +25,9 @@ using Sels.Core.Components.FileSystem;
 using Sels.Crypto.Chia.PlotBot.Factories;
 using Sels.Core.Components.Factory;
 using Sels.Core.Components.Conversion;
+using Sels.Crypto.Chia.PlotBot.Services;
+using Microsoft.Extensions.Configuration;
+using NLog.Common;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -35,13 +38,27 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static void Main(string[] args)
         {
+            // Set appsetting directory
+            if(args.Length > 0)
+            {
+                Directory.SetCurrentDirectory(args[0]);
+            }
+            else
+            {
+                Helper.App.SetCurrentDirectoryToExecutingAssembly();
+            }
+            
             CreateHostBuilder(args).Build().Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .UseSystemd()
                 .ConfigureServices((hostContext, services) =>
                 {
+                    // Replace default IConfiguration because publishing breaks the default path
+                    services.AddSingleton(x => Helper.App.BuildDefaultConfigurationFile());
+
                     // Register services
                     services.AddHostedService<PlotBotManager>();
                     services.AddSingleton<PlotBot>();
@@ -52,7 +69,6 @@ namespace Sels.Crypto.Chia.PlotBot
                         return new AliasTypeFactory(x.GetRequiredService<IConfigProvider>(), GenericConverter.DefaultConverter);
                     });
 
-
                     // Setup service factory
                     services.AddSingleton<IServiceFactory, UnityServiceFactory>(x => {
                         var factory = new UnityServiceFactory();
@@ -60,18 +76,31 @@ namespace Sels.Crypto.Chia.PlotBot
                         return factory;
                     });
 
-                    // Save state
+                    // Create config provider
                     var provider = services.BuildServiceProvider();
                     var configProvider = provider.GetRequiredService<IConfigProvider>();
 
-                    hostContext.Properties.Add(ConfigProviderKey, configProvider);
-                })
-                .ConfigureLogging(SetupLogging);
+                    // Check test mode services
+                    var testMode = configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.TestMode, false);
 
-        private static void SetupLogging(HostBuilderContext context, ILoggingBuilder builder)
+                    if (testMode)
+                    {
+                        services.AddSingleton<IPlottingService, TestLinuxPlottingService>();
+                    }
+                    else
+                    {
+                        services.AddSingleton<IPlottingService, LinuxPlottingService>();
+                    }
+
+                    // Setup logging
+
+                    services.AddLogging(x => SetupLogging(configProvider, x));
+                });
+
+        private static void SetupLogging(IConfigProvider configProvider, ILoggingBuilder builder)
         {
             // Read config
-            var configProvider = context.Properties[ConfigProviderKey].As<IConfigProvider>();
+            var devMode = configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.DevMode, false);
             var minLogLevel = configProvider.GetAppSetting<LogLevel>(PlotBotConstants.Config.AppSettings.MinLogLevel);
             var logDirectory = configProvider.GetAppSetting(PlotBotConstants.Config.AppSettings.LogDirectory, true, x => x.HasValue() && Directory.Exists(x), x => $"Directory cannot be empty and Directory must exist on the file system. Was <{x}>");
             var archiveSize = configProvider.GetAppSetting<long>(PlotBotConstants.Config.AppSettings.ArchiveSize, true, x => x > 1, x => $"File size cannot be empty and file size must be above 1 {MegaByte.FileSizeAbbreviation}");
@@ -79,6 +108,14 @@ namespace Sels.Crypto.Chia.PlotBot
 
             var logDirectoryInfo = new DirectoryInfo(logDirectory);
             var minLogLevelOrdinal = minLogLevel.ConvertTo<int>();
+
+            // Enable nlog internal logging if in dev mode
+            if (devMode)
+            {
+                InternalLogger.LogToConsole = true;
+                InternalLogger.LogFile = Path.Combine(logDirectory, "Nlog.txt");
+                InternalLogger.LogLevel = NLog.LogLevel.Debug;
+            }
 
             // Clear providers and set basic settings
             builder.ClearProviders();
@@ -88,13 +125,13 @@ namespace Sels.Crypto.Chia.PlotBot
 
             // Create targets
             config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotAll, logDirectoryInfo, archiveFileSize));
-            config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotError, logDirectoryInfo, archiveFileSize));
-            config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotCritical, logDirectoryInfo, archiveFileSize));
+            config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotError, logDirectoryInfo, archiveFileSize, PlotBotConstants.Logging.FullLayout));
+            config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotCritical, logDirectoryInfo, archiveFileSize, PlotBotConstants.Logging.FullLayout));
 
             // Create rules
             var nlogMinLevel = NLog.LogLevel.FromOrdinal(minLogLevelOrdinal);
             // Skip microsoft logs
-            config.AddRule(NLog.LogLevel.Debug, NLog.LogLevel.Info, new NullTarget(), PlotBotConstants.Logging.Categories.Microsoft, true);
+            config.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Info, new NullTarget(), PlotBotConstants.Logging.Categories.Microsoft, true);
             // All logs
             config.AddRule(nlogMinLevel, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotAll);
             // All errors
@@ -107,12 +144,12 @@ namespace Sels.Crypto.Chia.PlotBot
             builder.AddNLog(config);
         }
 
-        private static FileTarget CreateLogFileTarget(string targetName, DirectoryInfo logDirectory, FileSize archiveSize)
+        private static FileTarget CreateLogFileTarget(string targetName, DirectoryInfo logDirectory, FileSize archiveSize, string layout = PlotBotConstants.Logging.Layout)
         {
             return new FileTarget()
             {
                 Name = targetName,
-                Layout = PlotBotConstants.Logging.Layout,
+                Layout = layout,
                 FileName = Path.Combine(logDirectory.FullName, $"{targetName}.txt"),
                 ArchiveFileName = Path.Combine(logDirectory.FullName, PlotBotConstants.Logging.ArchiveFolder, $"{targetName}_{{###}}.txt"),
                 ArchiveAboveSize = archiveSize.ByteSize,

@@ -15,8 +15,10 @@ using Sels.Core.Extensions.Conversion;
 using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Crypto.Chia.PlotBot.Exceptions;
 using System.Security.Cryptography;
+using Sels.Core.Extensions.Linq;
 using Sels.Core.Components.FileSystem;
 using Sels.Core.Contracts.Factory;
+using Sels.Core;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -26,7 +28,6 @@ namespace Sels.Crypto.Chia.PlotBot
         private readonly IPlotBotConfigValidator _configValidator;
 
         // State
-        private DateTime _lastConfigCheckTime;
         private string _configHash;
         private PlotBot _plotBot;
 
@@ -48,6 +49,11 @@ namespace Sels.Crypto.Chia.PlotBot
 
             SetupLogging(factory.CreateLogger(PlotBotConstants.LoggerName));
             LoadServiceConfig(configProvider.ValidateArgument(nameof(configProvider)));
+
+            // Dispose plot bot when app closes
+            Helper.App.RegisterApplicationClosingAction(() => {
+                if (_plotBot.HasValue()) _plotBot.Dispose();
+            });
         }
 
         protected void SetupLogging(ILogger logger)
@@ -60,7 +66,7 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            using (LoggingServices.TraceAction($"Loading service configuration"))
+            using (LoggingServices.TraceAction(LogLevel.Debug, $"Loading service configuration"))
             {
                 var configFile = configProvider.GetAppSetting(PlotBotConstants.Config.AppSettings.ConfigFile, true, x => x.HasValue(), x => $"Value cannot be empty or whitespace. Was <{x}>");
                 PlotBotConfigFile = new FileInfo(configFile);
@@ -121,7 +127,7 @@ namespace Sels.Crypto.Chia.PlotBot
                                     else
                                     {
                                         // Safe to reload
-                                        LoggingServices.Log($"{PlotBotConstants.ServiceName} doesn't have any instances running so config can be safely reloaded. Reloading config");
+                                        LoggingServices.Log($"{PlotBotConstants.ServiceName} doesn't have any instances running or can be hot reloaded so config can be safely reloaded. Reloading config");
                                         _plotBot.ReloadConfig(newConfig);
                                         _plotBot.CanStartNewInstances = true;
                                     }
@@ -132,7 +138,17 @@ namespace Sels.Crypto.Chia.PlotBot
                                 }
                             }
 
+                            LoggingServices.Log($"{PlotBotConstants.ServiceName} plotting");
+                            var result = _plotBot.Plot();
 
+                            result.CreatedPlots.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} created {x}"));
+                            
+                            if(result.DeletedPlotters > 0)
+                            {
+                                LoggingServices.Log($"{PlotBotConstants.ServiceName} removed {result.DeletedPlotters} plotters");
+                            }
+
+                            result.StartedInstances.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} started instance {x}"));
                         }
 
                         LoggingServices.Log(LogLevel.Debug, $"{PlotBotConstants.ServiceName} sleeping for {PollingInterval} milliseconds");
@@ -151,10 +167,7 @@ namespace Sels.Crypto.Chia.PlotBot
             }
             finally
             {
-                if (_plotBot.HasValue())
-                {
-                    _plotBot.Dispose();
-                }
+                _plotBot.TryDispose(x => LoggingServices.Log($"Plot Bot could not be properly disposed", x));
             }
         }
 
@@ -169,51 +182,53 @@ namespace Sels.Crypto.Chia.PlotBot
             LoggingServices.Log($"{PlotBotConstants.ServiceName} read configuration. Started validating configuration.");
             var errors = _configValidator.Validate(config);
 
-            _lastConfigCheckTime = DateTime.Now;
             using(LoggingServices.TraceAction(LogLevel.Debug, "Generating config file hash"))
             {
                 _configHash = configFileContent.GenerateHash<MD5>();
             }
             
-
             LoggingServices.Log($"{PlotBotConstants.ServiceName} done validating configuration");
             return !errors.HasValue() ? config : throw new PlotBotMisconfiguredException(errors);
         }
 
         private bool DoesConfigNeedToBeReloaded()
-        {           
-            if (_lastConfigCheckTime < PlotBotConfigFile.LastWriteTime)
+        {
+            var configFileContent = PlotBotConfigFile.Read();
+            string hash;
+
+            LoggingServices.Log(LogLevel.Debug, $"Comparing hashes to see if config file changed");
+
+            using (LoggingServices.TraceAction(LogLevel.Debug, "Generating config file hash"))
             {
-                _lastConfigCheckTime = DateTime.Now;
-                LoggingServices.Log($"Configuration was modified since the last time {PlotBotConstants.ServiceName} loaded in the configuration. Comparing hashes to see if the config was actually changed");
-
-                var configFileContent = PlotBotConfigFile.Read();
-                string hash;
-
-                using (LoggingServices.TraceAction(LogLevel.Debug, "Generating config file hash"))
-                {
-                    hash = configFileContent.GenerateHash<MD5>();
-                }
-
-                if (_configHash.Equals(hash))
-                {
-                    LoggingServices.Log($"Newly generated hash <{hash}> is the same as the old hash <{_configHash}> so no changes detected.");
-                }
-                else
-                {
-                    LoggingServices.Log($"Newly generated hash <{hash}> is not the same as the old hash <{_configHash}>, requesting config reload.");
-                }
+                hash = configFileContent.GenerateHash<MD5>();
             }
 
-            _lastConfigCheckTime = DateTime.Now;
+            if (_configHash.Equals(hash))
+            {
+                LoggingServices.Log(LogLevel.Debug, $"Newly generated hash <{hash}> is the same as the old hash <{_configHash}> so no changes detected.");
+            }
+            else
+            {
+                LoggingServices.Log(LogLevel.Debug, $"Newly generated hash <{hash}> is not the same as the old hash <{_configHash}>, requesting config reload.");
+
+                return true;
+            }
+
             return false;
         }
 
         private bool CanConfigBeSafelyReloaded(PlotBotConfig newConfig)
         {
-            // Todo: check for changes to need a full reload. Always full reload for now.
+            var missingPlotters = _plotBot.Plotters.Where(x => !newConfig.Plotters.Select(p => p.Alias).Contains(x.Alias)).ToArray();
+             
+            if(missingPlotters.HasValue())
+            {
+                LoggingServices.Log($"Plotters {missingPlotters.JoinString(", ")} were missing in the new config.");
 
-            return false;
+                return false;
+            }
+
+            return true;
         }
     }
 }
