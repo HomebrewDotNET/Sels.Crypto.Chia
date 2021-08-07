@@ -50,7 +50,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// <summary>
         /// Contains config on when a new instance is allowed to plot to a drive.
         /// </summary>
-        public PlotterDelayConfig[] DelaySettings { get; set; }
+        public ComponentConfig[] DelaySettings { get; set; }
 
         // Statics
         /// <summary>
@@ -60,7 +60,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         {
             Alias = "MainPlotter",
             WorkingDirectories = PlotterWorkingConfig.Default,
-            DelaySettings = new PlotterDelayConfig[] { PlotterDelayConfig.Default }
+            DelaySettings = new ComponentConfig[] { ComponentConfig.DefaultPlotterDelayer }
         };
     }
 
@@ -90,31 +90,6 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         {
             Caches = new string[] { "/path/to/cache/one", "/path/to/cache/two" },
             WorkingDirectory = "/path/to/plotter/working/directory"
-        };
-    }
-
-    /// <summary>
-    /// Contains config on when a new instance is allowed to plot to a drive.
-    /// </summary>
-    public class PlotterDelayConfig
-    {
-        /// <summary>
-        /// Name of the component that checks if an instance is allowed to run.
-        /// </summary>
-        public string Name { get; set; }
-        /// <summary>
-        /// Arguments for the delay component.
-        /// </summary>
-        public string[] Arguments { get; set; }
-
-        // Statics
-        /// <summary>
-        /// Default instance.
-        /// </summary>
-        public static PlotterDelayConfig Default => new PlotterDelayConfig()
-        {
-            Name = PlotBotConstants.Components.Delay.ProgressFileContains,
-            Arguments = new string[] { PlotBotConstants.Components.Delay.ProgressFileContainsDefaultArg }
         };
     }
 }

@@ -11,6 +11,7 @@ using Sels.Core.Components.FileSizes.Byte;
 using Sels.Core.Extensions.FileSizes;
 using Microsoft.Extensions.Logging;
 using Sels.Core.Components.FileSizes.Byte.Binary;
+using Sels.Crypto.Chia.PlotBot.Contracts;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
@@ -31,7 +32,14 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// Optional priority. Used to give priority to drives so some are filled up faster.
         /// </summary>
         public int Priority { get; set; }
+        /// <summary>
+        /// Components for clearing extra drive space during plotting.
+        /// </summary>
+        public IDriveSpaceClearer[] DriveClearers { get; set; }
 
+        /// <summary>
+        /// Returns the available free space on this drive taking into account running plotting instances.
+        /// </summary>
         public FileSize AvailableFreeSize => Directory.FreeSpace - _plottingInstances.Sum(x => x.ReservedDestinationSize.ByteSize).ToFileSize();
 
         /// <summary>
@@ -43,13 +51,31 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// </summary>
         public bool HasRunningInstances => _plottingInstances.HasValue();
 
+        /// <summary>
+        /// Checks if thid drive has enough space for <paramref name="size"/>.
+        /// </summary>
+        /// <param name="size">Needed free space</param>
+        /// <returns>True if this drive can fit <paramref name="size"/></returns>
         public bool HasEnoughSpaceFor(FileSize size)
+        {
+           return AvailableFreeSize > size;
+        }
+
+        /// <summary>
+        /// Checks if this drive be plotted to. Tries to free up extra space until we have enough free space for <paramref name="size"/>
+        /// </summary>
+        /// <param name="size">Needed free space</param>
+        /// <returns>True if enough free space is available</returns>
+        public bool CanBePlotted(FileSize size)
         {
             var enoughSpace = AvailableFreeSize > size;
 
-            if (!enoughSpace)
+            if (!enoughSpace && DriveClearers.HasValue())
             {
-                // Todo: Components that can clear space like deleting non-nft plots.
+                if(DriveClearers.Any(x => x.ClearSpace(this, size)))
+                {
+                    LoggingServices.Log($"Drive {Alias} has cleared extra space");
+                }
             }
 
             enoughSpace = AvailableFreeSize > size;

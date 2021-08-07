@@ -16,14 +16,14 @@ namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
     /// </summary>
     public class LastStartedDelayer : IPlotterDelayer
     {
-        // Fields
-        private readonly int _minuteDelay;
+        // Properties
+        /// <summary>
+        /// How long to wait after the last instance was started before starting a new one.
+        /// </summary>
+        public int MinuteDelay { get; set; }
 
-        public LastStartedDelayer(string minuteDelay)
+        public LastStartedDelayer()
         {
-            minuteDelay.ValidateArgument(nameof(minuteDelay));
-
-            _minuteDelay = minuteDelay.ConvertTo<int>();
         }
 
         public bool CanStartInstance(Plotter plotter, Drive drive)
@@ -35,20 +35,25 @@ namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
 
             var allowedToPlot = true;
 
-            if(plotter.HasRunningInstances && _minuteDelay != 0)
+            if(plotter.HasRunningInstances && MinuteDelay != 0)
             {
                 var lastRunningInstance = plotter.Instances.OrderByDescending(x => x.StartTime).First();
-                var allowedTimeToRun = DateTime.Now.AddMinutes(_minuteDelay.ToNegative());
+                var allowedTimeToRun = DateTime.Now.AddMinutes(MinuteDelay.ToNegative());
 
                 allowedToPlot =  allowedTimeToRun > lastRunningInstance.StartTime;
 
                 if (!allowedToPlot)
                 {
-                    LoggingServices.Log(LogLevel.Debug, $"Plotter {plotter.Alias} not allowed to plot to Drive {drive.Alias}: Instance {lastRunningInstance.Name} started less than {_minuteDelay} minutes ago");
+                    LoggingServices.Log(LogLevel.Debug, $"Plotter {plotter.Alias} not allowed to plot to Drive {drive.Alias}: Instance {lastRunningInstance.Name} started less than {MinuteDelay} minutes ago");
                 }
             }
 
             return allowedToPlot;
+        }
+
+        public IPlotterDelayer Validate()
+        {
+            return this;
         }
     }
 }

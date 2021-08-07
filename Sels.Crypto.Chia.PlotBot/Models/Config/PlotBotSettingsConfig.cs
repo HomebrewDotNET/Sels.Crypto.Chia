@@ -30,6 +30,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// </summary>
         public PlotSizeConfig[] PlotSizes { get; set; }
 
+        /// <summary>
+        /// Components for clearing extra drive space during plotting.
+        /// </summary>
+        public ComponentConfig[] DriveClearers { get; set; }
+
         // Statics
         /// <summary>
         /// Default instance.
@@ -40,13 +45,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
             PoolContractAddress = "MyPoolContractAddress",
             FarmerKey = "MyFarmerKey",
             DefaultPlotCommand = PlotBotConstants.Settings.DefaultCommand,
-            PlotSizes = new PlotSizeConfig[] { PlotSizeConfig.Default }
-        };
-
-        internal object First()
-        {
-            throw new NotImplementedException();
-        }
+            PlotSizes = new PlotSizeConfig[] { PlotSizeConfig.Default },
+            DriveClearers = new ComponentConfig[] { ComponentConfig.DefaultDriveClearer }
+        };      
     }
 
     public class PlotSizeConfig

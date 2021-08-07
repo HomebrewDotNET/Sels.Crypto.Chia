@@ -28,6 +28,10 @@ using Sels.Core.Components.Conversion;
 using Sels.Crypto.Chia.PlotBot.Services;
 using Microsoft.Extensions.Configuration;
 using NLog.Common;
+using Sels.Crypto.Chia.PlotBot.PlotDelayers;
+using Sels.Core.Components.IoC;
+using Sels.Core.Contracts.Conversion;
+using Sels.Crypto.Chia.PlotBot.DriveClearers;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -69,11 +73,10 @@ namespace Sels.Crypto.Chia.PlotBot
                         return new AliasTypeFactory(x.GetRequiredService<IConfigProvider>(), GenericConverter.DefaultConverter);
                     });
 
-                    // Setup service factory
-                    services.AddSingleton<IServiceFactory, UnityServiceFactory>(x => {
-                        var factory = new UnityServiceFactory();
-                        factory.LoadFrom(services);
-                        return factory;
+                    services.AddSingleton<IGenericTypeConverter, GenericConverter>(x => {
+                        var converter = GenericConverter.DefaultConverter;
+                        converter.Settings.ThrowOnFailedConversion = false;
+                        return converter;
                     });
 
                     // Create config provider
@@ -91,6 +94,28 @@ namespace Sels.Crypto.Chia.PlotBot
                     {
                         services.AddSingleton<IPlottingService, LinuxPlottingService>();
                     }
+
+                    // Setup service factory
+                    services.AddSingleton<IServiceFactory, UnityServiceFactory>(x => {
+                        var factory = new UnityServiceFactory();
+                        factory.LoadFrom(services);
+
+                        // Plotter delayers
+                        factory.Register<IPlotterDelayer, LastStartedDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.TimeStarted);
+                        factory.Register<IPlotterDelayer, ProgressFileDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.ProgressFileContains);
+
+                        // Drive clearers
+                        if (testMode)
+                        {
+                            factory.Register<IDriveSpaceClearer, TestOldPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
+                        }
+                        else
+                        {
+                            factory.Register<IDriveSpaceClearer, OldPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
+                        }
+
+                        return factory;
+                    });
 
                     // Setup logging
 

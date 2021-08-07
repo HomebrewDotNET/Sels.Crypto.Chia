@@ -8,7 +8,15 @@
       {
         "Name": "K32",
         "CreationSize": 220.0,
-        "FinalSize": 101.4
+        "FinalSize": 10100.4
+      }
+    ],
+    "DriveClearers": [
+      {
+        "Name": "OgDate",
+        "Arguments": {
+          "ThresHold": "07/07/2021"
+        }
       }
     ]
   },
@@ -17,7 +25,7 @@
       "Enabled": true,
       "Alias": "MainPlotter",
       "PlotSize": "K32",
-      "MaxInstances": 1,
+      "MaxInstances": 3,
       "TotalThreads": 4,
       "TotalRam": 4000,
       "Buckets": 128,
@@ -33,9 +41,9 @@
       "DelaySettings": [
         {
           "Name": "ProgressFile",
-          "Arguments": [
-            "Phase 1 took"
-          ]
+          "Arguments": {
+            "Filter":  "Phase 1 took"
+          }
         }
       ]
     }
@@ -43,7 +51,7 @@
   "Drives": [
     {
       "Alias": "ChiaDriveOne",
-      "Directory": "/mnt/c",
+      "Directory": "/mnt/g/App/Plots",
       "Priority": 1
     }
   ]

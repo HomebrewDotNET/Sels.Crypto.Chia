@@ -68,13 +68,23 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Components
         {
+            public static class Clearer
+            {
+                public const string OgDate = "OgDate";
+                public const string OgDateThreshold = "Threshold";
+                public const string OgDateThresholdArg = "07/07/2021";
+
+            }
+
             public static class Delay
             {
                 public const string TimeStarted = "TimeStarted";
-                public const int TimeStartedDefaultArg = 60;
+                public const string TimeStartedDelay = "MinuteDelay";
+                public const int TimeStartedDelayArg = 60;
 
                 public const string ProgressFileContains = "ProgressFile";
-                public const string ProgressFileContainsDefaultArg = "Phase 1 took";
+                public const string ProgressFileContainsFilter = "Filter";
+                public const string ProgressFileContainsFilterDefaultArg = "Phase 1 took";
             }
         }
 

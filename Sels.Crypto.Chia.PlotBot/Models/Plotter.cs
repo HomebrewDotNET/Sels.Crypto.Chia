@@ -114,14 +114,24 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
         }
 
+        /// <summary>
+        /// Checks if this plotter can plot to <paramref name="drive"/>.
+        /// </summary>
+        /// <param name="drive">Drive to check free space on</param>
+        /// <returns></returns>
         public bool CanPlotToDrive(Drive drive)
         {
             using var logger = LoggingServices.TraceMethod(this);
             drive.ValidateArgument(nameof(drive));
 
-            return CanPlotNew && drive.HasEnoughSpaceFor(PlotSize.FinalSize) && PlotterDelayers.All(x => x.CanStartInstance(this, drive));
+            return CanPlotNew && PlotterDelayers.All(x => x.CanStartInstance(this, drive)) && drive.CanBePlotted(PlotSize.FinalSize);
         }
 
+        /// <summary>
+        /// Starts up a new instance that will create a plot for <paramref name="drive"/>.
+        /// </summary>
+        /// <param name="drive">Destination drive for the created plot</param>
+        /// <returns>Plotting instance that is creating a new plot for <paramref name="drive"/></returns>
         public PlottingInstance PlotToDrive(Drive drive)
         {
             using var logger = LoggingServices.TraceMethod(this);
