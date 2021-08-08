@@ -71,6 +71,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         public string PlotCommand { get; set; }
 
         /// <summary>
+        /// Component that searches for the plot file name when an instance is plotting.
+        /// </summary>
+        public IPlotFileNameSeeker PlotFileNameSeeker { get; set; }
+
+        /// <summary>
         /// Checks if plotter is allowed to plot to a certain drive
         /// </summary>
         public IPlotterDelayer[] PlotterDelayers { get; set; }
@@ -183,7 +188,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 plotCommand = parameterizer.Apply(PlotCommand);
             }
 
-            var instance = new PlottingInstance(followNumber, _plottingService, plotCommand, this, drive, PlotSize.FinalSize, x => { RegisterInstance(x); drive.RegisterInstance(x); }, x => { RemoveInstance(x); drive.RemoveInstance(x); });
+            var instance = new PlottingInstance(followNumber, _plottingService, PlotFileNameSeeker, plotCommand, this, drive, PlotSize.FinalSize, x => { RegisterInstance(x); drive.RegisterInstance(x); }, x => { RemoveInstance(x); drive.RemoveInstance(x); });
 
             LoggingServices.Log($"Plotter {Alias} has created an new instance with name {instance.Name} that will plot to {drive.Alias}");
 

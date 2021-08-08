@@ -149,6 +149,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 plotter.Caches = configPlotter.WorkingDirectories.Caches.SelectOrDefault(x => _directoryFactory.Create(x)).ToArrayOrDefault();
                 plotter.WorkingDirectory = _directoryFactory.Create(configPlotter.WorkingDirectories.WorkingDirectory);
                 plotter.ArchiveProgressFiles = configPlotter.WorkingDirectories.ArchiveProgressFiles;
+                plotter.PlotFileNameSeeker = _serviceFactory.Resolve<IPlotFileNameSeeker>(configPlotter.PlotFileNameSeeker.Name).InjectProperties(configPlotter.PlotFileNameSeeker.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate();
                 plotter.PlotterDelayers = configPlotter.DelaySettings.SelectOrDefault(x => _serviceFactory.Resolve<IPlotterDelayer>(x.Name).InjectProperties(x.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate()).ToArrayOrDefault();
 
                 plotter.TaggedForDeletion = false;

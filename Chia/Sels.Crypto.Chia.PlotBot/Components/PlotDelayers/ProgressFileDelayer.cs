@@ -12,7 +12,7 @@ using Sels.Core.Components.Logging;
 using Microsoft.Extensions.Logging;
 using Sels.Crypto.Chia.PlotBot.Exceptions;
 
-namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
+namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
 {
     /// <summary>
     /// Delayer that checks if the progress file of the last running instance contains a certain string.
@@ -21,11 +21,11 @@ namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
     {
         // Properties
         /// <summary>
-        /// Filters used to check the progress file
+        /// Filters used to check the progress file.
         /// </summary>
         public string Filter { get; set; }
         /// <summary>
-        /// Indicates if <see cref="Filter"/> is a regex filter
+        /// Indicates if <see cref="Filter"/> is a regex filter.
         /// </summary>
         public bool IsRegex { get; set; }
 

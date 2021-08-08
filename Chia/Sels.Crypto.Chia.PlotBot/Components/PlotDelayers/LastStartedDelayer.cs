@@ -9,7 +9,7 @@ using System.Linq;
 using Sels.Core.Components.Logging;
 using Microsoft.Extensions.Logging;
 
-namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
+namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
 {
     /// <summary>
     /// Delayer that checks when the last instance was started before starting another instance.

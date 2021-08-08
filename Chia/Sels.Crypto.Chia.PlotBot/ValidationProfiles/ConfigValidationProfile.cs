@@ -47,7 +47,9 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
                 .AddValidValidation(x => x.TotalThreads, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
                 .AddValidValidation(x => x.TotalRam, x => x >= 1000, x => $"{x.Property.Name} must be equal or above 1000")
                 .AddValidValidation(x => x.Buckets, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
+                .CannotBeNull(x => x.PlotFileNameSeeker, x => $"{x.Property.Name} section must be defined")
                 .CannotBeNull(x => x.WorkingDirectories, x => $"{x.Property.Name} section must be defined")
+                .AddValidValidation(x => x.PlotFileNameSeeker, x => factory.IsRegistered<IPlotFileNameSeeker>(x.Name), x => $"{x.Property.Name} is not a known file name seeker. Was <{x.PropertyValue}>")
                 .AddValidCollectionValidation(x => x.DelaySettings, x => factory.IsRegistered<IPlotterDelayer>(x.Name), x => $"{x.Property.Name} is not a known delayer. Was <{x.ElementValue}>");
 
             CreateValidator<PlotterWorkingConfig>()

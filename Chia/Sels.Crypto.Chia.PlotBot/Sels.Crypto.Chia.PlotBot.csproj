@@ -19,10 +19,10 @@
     <PackageReference Include="NLog.Extensions.Logging" Version="1.7.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Sels.Core\Sels.Core.Linux\Sels.Core.Linux.csproj" />
-    <ProjectReference Include="..\..\Sels.Core\Sels.Core.Unity\Sels.Core.Unity.csproj" />
-    <ProjectReference Include="..\..\Sels.Core\Sels.Core\Sels.Core.csproj" />
-    <ProjectReference Include="..\..\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core.Linux\Sels.Core.Linux.csproj" />
+	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core.Unity\Sels.Core.Unity.csproj" />
+	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core\Sels.Core.csproj" />
+	  <ProjectReference Include="..\..\..\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework.csproj" />
+	</ItemGroup>
 </Project>

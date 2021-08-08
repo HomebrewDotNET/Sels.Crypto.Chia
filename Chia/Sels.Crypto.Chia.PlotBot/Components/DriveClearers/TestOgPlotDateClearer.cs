@@ -9,7 +9,7 @@ using Sels.Core.Components.FileSizes.Byte;
 using Sels.Core.Components.FileSizes.Byte.Binary;
 using System.IO;
 
-namespace Sels.Crypto.Chia.PlotBot.DriveClearers
+namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 {
     public class TestOgPlotDateClearer : OgPlotDateClearer
     {

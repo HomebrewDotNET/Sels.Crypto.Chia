@@ -43,6 +43,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         public string PlotCommand { get; set; }
 
         /// <summary>
+        /// Component that searches for the plot file name when an instance is plotting.
+        /// </summary>
+        public ComponentConfig PlotFileNameSeeker { get; set; }
+
+        /// <summary>
         /// Contains settings about which directories the plotter can use to plot.
         /// </summary>
         public PlotterWorkingConfig WorkingDirectories { get; set; }
@@ -59,6 +64,14 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         public static PlotterConfig Default => new PlotterConfig()
         {
             Alias = "MainPlotter",
+            PlotFileNameSeeker = new ComponentConfig()
+            {
+                Name = PlotBotConstants.Components.PlotFileNameSeeker.String,
+                Arguments = new Dictionary<string, string>()
+                {
+                    { PlotBotConstants.Components.PlotFileNameSeeker.StringFilter, PlotBotConstants.Components.PlotFileNameSeeker.StringFilterArg }
+                }
+            },
             WorkingDirectories = PlotterWorkingConfig.Default,
             DelaySettings = new ComponentConfig[] { ComponentConfig.DefaultPlotterDelayer }
         };

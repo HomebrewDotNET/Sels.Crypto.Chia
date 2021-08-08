@@ -28,11 +28,12 @@ using Sels.Core.Components.Conversion;
 using Sels.Crypto.Chia.PlotBot.Services;
 using Microsoft.Extensions.Configuration;
 using NLog.Common;
-using Sels.Crypto.Chia.PlotBot.PlotDelayers;
 using Sels.Core.Components.IoC;
 using Sels.Core.Contracts.Conversion;
-using Sels.Crypto.Chia.PlotBot.DriveClearers;
 using Sels.Core.Templates.FileSystem;
+using Sels.Crypto.Chia.PlotBot.Components.PlotDelayers;
+using Sels.Crypto.Chia.PlotBot.Components.DriveClearers;
+using Sels.Crypto.Chia.PlotBot.Components.PlotFileNameSeekers;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -101,6 +102,10 @@ namespace Sels.Crypto.Chia.PlotBot
                         var factory = new UnityServiceFactory();
                         factory.LoadFrom(services);
 
+                        // File name seekers
+                        factory.Register<IPlotFileNameSeeker, StringPlotFileNameSeeker>(ServiceScope.Scoped, PlotBotConstants.Components.PlotFileNameSeeker.String);
+                        factory.Register<IPlotFileNameSeeker, RegexPlotFileNameSeeker>(ServiceScope.Scoped, PlotBotConstants.Components.PlotFileNameSeeker.Regex);
+
                         // Plotter delayers
                         factory.Register<IPlotterDelayer, LastStartedDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.TimeStarted);
                         factory.Register<IPlotterDelayer, ProgressFileDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.ProgressFileContains);
@@ -108,11 +113,11 @@ namespace Sels.Crypto.Chia.PlotBot
                         // Drive clearers
                         if (testMode)
                         {
-                            factory.Register<IDriveSpaceClearer, TestOgPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, TestOgPlotDateClearer>(ServiceScope.Scoped, PlotBotConstants.Components.Clearer.OgDate);
                         }
                         else
                         {
-                            factory.Register<IDriveSpaceClearer, OgPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, OgPlotDateClearer>(ServiceScope.Scoped, PlotBotConstants.Components.Clearer.OgDate);
                         }
 
                         return factory;
