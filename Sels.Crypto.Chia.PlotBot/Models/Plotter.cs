@@ -10,6 +10,7 @@ using Sels.Core.Extensions.Linq;
 using System.Linq;
 using Sels.Core.Components.Parameters;
 using Microsoft.Extensions.Logging;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
@@ -114,14 +115,24 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
         }
 
+        /// <summary>
+        /// Checks if this plotter can plot to <paramref name="drive"/>.
+        /// </summary>
+        /// <param name="drive">Drive to check free space on</param>
+        /// <returns></returns>
         public bool CanPlotToDrive(Drive drive)
         {
             using var logger = LoggingServices.TraceMethod(this);
             drive.ValidateArgument(nameof(drive));
 
-            return CanPlotNew && drive.HasEnoughSpaceFor(PlotSize.FinalSize) && PlotterDelayers.All(x => x.CanStartInstance(this, drive));
+            return CanPlotNew && PlotterDelayers.All(x => x.CanStartInstance(this, drive)) && drive.CanBePlotted(PlotSize.FinalSize);
         }
 
+        /// <summary>
+        /// Starts up a new instance that will create a plot for <paramref name="drive"/>.
+        /// </summary>
+        /// <param name="drive">Destination drive for the created plot</param>
+        /// <returns>Plotting instance that is creating a new plot for <paramref name="drive"/></returns>
         public PlottingInstance PlotToDrive(Drive drive)
         {
             using var logger = LoggingServices.TraceMethod(this);
@@ -156,14 +167,14 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Threads, threads);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Buckets, Buckets);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Ram, ram);
-            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Destination, drive.Directory.Directory.FullName);
+            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Destination, drive.Directory.Source.FullName);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PoolKey, PoolKey);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PoolContractAddress, PoolContractAddress);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.FarmerKey, FarmerKey);
 
             for(int i = 0; i < Caches.Length; i++)
             {
-                parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", Caches[i].Directory.FullName);
+                parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", Caches[i].Source.FullName);
             }
 
             // Generate command
@@ -203,7 +214,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             Instances.ForceExecute(x => x.Dispose(), (x, ex) => LoggingServices.Log($"Error occured while disposing plotting instance {x.Name}", ex));
 
             // Clear cache directories
-            Caches.ForceExecute(x => x.Directory.Clear());
+            Caches.ForceExecute(x => x.Source.Clear());
         }
     }
 }

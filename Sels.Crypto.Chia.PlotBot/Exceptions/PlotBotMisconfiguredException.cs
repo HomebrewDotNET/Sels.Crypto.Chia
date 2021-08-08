@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Sels.Core.Extensions;
+using Sels.Core.Extensions.Conversion;
 
 namespace Sels.Crypto.Chia.PlotBot.Exceptions
 {
@@ -17,6 +18,10 @@ namespace Sels.Crypto.Chia.PlotBot.Exceptions
         public PlotBotMisconfiguredException(IEnumerable<string> errors) : base(MessageFormat.FormatString(Environment.NewLine + errors.ValidateArgument(nameof(errors)).JoinStringNewLine()))
         {
             Errors = errors.ToArray();
+        }
+
+        public PlotBotMisconfiguredException(string error) : this(error.ValidateArgument(nameof(error)).AsArray())
+        {
         }
     }
 }

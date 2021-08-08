@@ -7,6 +7,9 @@ using System.Linq;
 using System.Text;
 using Sels.Core.Extensions;
 using Sels.Crypto.Chia.PlotBot.Contracts;
+using Sels.Core.Contracts.Configuration;
+using Sels.Core;
+using Sels.Core.Contracts.Factory;
 
 namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
 {
@@ -15,21 +18,22 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
         // Constants
         private const string PlotBotName = PlotBotConstants.ServiceName;
 
-        public ConfigValidationProfile()
+        public ConfigValidationProfile(IServiceFactory factory)
         {
             CreateValidator<PlotBotConfig>()
                 .IfNull(() => $"{PlotBotName} configuration cannot be empty or whitespace")
                 .CannotBeNull(x => x.Settings, x => $"{x.Property.Name} section must be defined")
                 .MustContainAtLeast(x => x.Plotters, 1, x => $"{x.Property.Name} must contain at least {1} Plotter")
-                .AllElementsMustBeUnique(x => x.Plotters, x => x.Alias, x => $"Plotter {nameof(PlotterConfig.Alias)} must be unique between all plotters. Was <{x.PropertyValue}>")
-                .AllElementsMustBeUnique(x => x.Drives, x => x.Alias, x => $"Plotter {nameof(DriveConfig.Alias)} must be unique between all drives. Was <{x.PropertyValue}>")
+                .AllElementsMustBeUnique(x => x.Plotters, x => x.Alias, x => $"Plotter {nameof(PlotterConfig.Alias)} must be unique between all plotters.")
+                .AllElementsMustBeUnique(x => x.Drives, x => x.Alias, x => $"Drive {nameof(DriveConfig.Alias)} must be unique between all drives.")
                 .AddInvalidValidation(x => x.Plotters.Any(p => !x.Settings.PlotSizes.Select(x => x.Name).Contains(p.PlotSize)), x => $"Plotter contained a {nameof(PlotterConfig.PlotSize)} that wasn't defined in {nameof(x.Settings)}.{nameof(x.Settings.PlotSizes)}");
 
             CreateValidator<PlotBotSettingsConfig>()
                 .AddInvalidValidation(x => !x.PoolKey.HasValue() && !x.PoolContractAddress.HasValue(), x => $"Either {nameof(x.PoolKey)} or {nameof(x.PoolContractAddress)} needs to be defined")
                 .CannotBeNullOrWhiteSpace(x => x.FarmerKey, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
                 .CannotBeNullOrWhiteSpace(x => x.DefaultPlotCommand, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .MustContainAtLeast(x => x.PlotSizes, 1, x => $"{x.Property.Name} must contain at least {1} Plot Size");
+                .MustContainAtLeast(x => x.PlotSizes, 1, x => $"{x.Property.Name} must contain at least {1} Plot Size")
+                .AddValidCollectionValidation(x => x.DriveClearers, x => factory.IsRegistered<IDriveSpaceClearer>(x.Name), x => $"{x.Property.Name} is not a known clearer. Was <{x.ElementValue}>");
 
             CreateValidator<PlotSizeConfig>()
                 .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
@@ -43,7 +47,8 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
                 .AddValidValidation(x => x.TotalThreads, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
                 .AddValidValidation(x => x.TotalRam, x => x >= 1000, x => $"{x.Property.Name} must be equal or above 1000")
                 .AddValidValidation(x => x.Buckets, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
-                .CannotBeNull(x => x.WorkingDirectories, x => $"{x.Property.Name} section must be defined");
+                .CannotBeNull(x => x.WorkingDirectories, x => $"{x.Property.Name} section must be defined")
+                .AddValidCollectionValidation(x => x.DelaySettings, x => factory.IsRegistered<IPlotterDelayer>(x.Name), x => $"{x.Property.Name} is not a known delayer. Was <{x.ElementValue}>");
 
             CreateValidator<PlotterWorkingConfig>()
                 .CannotBeEmpty(x => x.Caches, x => $"{x.Property.Name} must contain at least 1 directory")
@@ -51,9 +56,10 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
                 .CannotBeNullOrWhiteSpace(x => x.WorkingDirectory, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
                 .IsValidDirectory(x => x.WorkingDirectory, x => $"{x.Property.Name} must be valid directory. Was <{x.PropertyValue}>");
 
-            CreateValidator<PlotterDelayConfig>()
+            CreateValidator<ComponentConfig>()
                 .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .AddValidCollectionValidation(x => x.Arguments, x => x.HasValue(), x => $"Argument cannot be empty or whitespace. Was <{x.ElementValue}>");
+                
+                .AddValidCollectionValidation(x => x.Arguments, x => x.Key.HasValue(), x => $"Argument key cannot be empty or whitespace. Was <{x.ElementValue}>");
 
             CreateValidator<DriveConfig>()
                 .CannotBeNullOrWhiteSpace(x => x.Alias, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")

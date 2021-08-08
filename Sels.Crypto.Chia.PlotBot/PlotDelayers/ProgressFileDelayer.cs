@@ -10,6 +10,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Sels.Core.Components.Logging;
 using Microsoft.Extensions.Logging;
+using Sels.Crypto.Chia.PlotBot.Exceptions;
 
 namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
 {
@@ -18,25 +19,16 @@ namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
     /// </summary>
     public class ProgressFileDelayer : IPlotterDelayer
     {
-        // Fields
-        private readonly string _stringFilter;
-        private readonly bool _isRegex;
+        // Properties
+        /// <summary>
+        /// Filters used to check the progress file
+        /// </summary>
+        public string Filter { get; set; }
+        /// <summary>
+        /// Indicates if <see cref="Filter"/> is a regex filter
+        /// </summary>
+        public bool IsRegex { get; set; }
 
-        public ProgressFileDelayer(string filter, string isRegex) : this(filter, isRegex.ValidateArgumentNotNullOrWhitespace(nameof(isRegex)).ConvertTo<bool>())
-        {
-
-        }
-
-        public ProgressFileDelayer(string filter) : this(filter, false)
-        {
-
-        }
-
-        public ProgressFileDelayer(string filter, bool isRegex)
-        {
-            _stringFilter = filter.ValidateArgument(nameof(filter));
-            _isRegex = isRegex;
-        }
 
         public bool CanStartInstance(Plotter plotter, Drive drive)
         {
@@ -52,27 +44,37 @@ namespace Sels.Crypto.Chia.PlotBot.PlotDelayers
                 var lastStartedInstance = plotter.Instances.OrderByDescending(x => x.StartTime).First();
                 var fileContent = lastStartedInstance.ProgressFile.Read();
 
-                if (_isRegex)
+                if (IsRegex)
                 {
-                    allowedToPlot = Regex.IsMatch(fileContent, _stringFilter);
+                    allowedToPlot = Regex.IsMatch(fileContent, Filter);
 
                     if (!allowedToPlot)
                     {
-                        LoggingServices.Log(LogLevel.Debug, $"Plotter {plotter.Alias} not allowed to plot to Drive {drive.Alias}: Content of {lastStartedInstance.ProgressFile} did not match regex filter {_stringFilter}");
+                        LoggingServices.Log(LogLevel.Debug, $"Plotter {plotter.Alias} not allowed to plot to Drive {drive.Alias}: Content of {lastStartedInstance.ProgressFile} did not match regex filter {Filter}");
                     }
                 }
                 else
                 {
-                    allowedToPlot = fileContent.Contains(_stringFilter, StringComparison.OrdinalIgnoreCase);
+                    allowedToPlot = fileContent.Contains(Filter, StringComparison.OrdinalIgnoreCase);
 
                     if (!allowedToPlot)
                     {
-                        LoggingServices.Log(LogLevel.Debug, $"Plotter {plotter.Alias} not allowed to plot to Drive {drive.Alias}: Content of {lastStartedInstance.ProgressFile} did not contain {_stringFilter}");
+                        LoggingServices.Log(LogLevel.Debug, $"Plotter {plotter.Alias} not allowed to plot to Drive {drive.Alias}: Content of {lastStartedInstance.ProgressFile} did not contain {Filter}");
                     }
                 }
             }
 
             return allowedToPlot;
+        }
+
+        public IPlotterDelayer Validate()
+        {
+            if (!Filter.HasValue())
+            {
+                throw new PlotBotMisconfiguredException($"{nameof(Filter)} cannot be null, empty or whitespace");
+            }
+
+            return this;
         }
     }
 }

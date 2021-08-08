@@ -12,8 +12,11 @@ using Sels.Core.Components.FileSizes.Byte.Binary;
 using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Core.Extensions.Linq;
 using Sels.Core.Extensions.Conversion;
+using Sels.Core.Extensions.DependencyInjection;
 using Sels.Core.Components.Logging;
 using Microsoft.Extensions.Logging;
+using Sels.Core.Contracts.Conversion;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -21,7 +24,8 @@ namespace Sels.Crypto.Chia.PlotBot
     {
         // Fields
         private readonly IFactory<CrossPlatformDirectory> _directoryFactory;
-        private readonly IObjectFactory _objectFactory;
+        private readonly IServiceFactory _serviceFactory;
+        private readonly IGenericTypeConverter _typeConverter;
         private readonly IPlottingService _plottingService;
 
         // Properties
@@ -32,10 +36,11 @@ namespace Sels.Crypto.Chia.PlotBot
         public List<Plotter> Plotters { get; private set; } = new List<Plotter>();
         public List<Drive> Drives { get; private set; } = new List<Drive>();
 
-        public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IObjectFactory objectFactory, IPlottingService plottingService)
+        public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IServiceFactory serviceFactory, IGenericTypeConverter typeConverter, IPlottingService plottingService)
         {
             _directoryFactory = directoryFactory.ValidateArgument(nameof(directoryFactory));
-            _objectFactory = objectFactory.ValidateArgument(nameof(objectFactory));
+            _serviceFactory = serviceFactory.ValidateArgument(nameof(serviceFactory));
+            _typeConverter = typeConverter.ValidateArgument(nameof(typeConverter));
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
         }
 
@@ -74,7 +79,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 {
                     foreach (var plotter in Plotters.Where(x => x.CanPlotNew))
                     {
-                        foreach (var drive in Drives.OrderBy(x => x.Priority))
+                        foreach (var drive in Drives.OrderByDescending(x => x.HasEnoughSpaceFor(plotter.PlotSize.FinalSize)).ThenBy(x => x.Priority))
                         {
                             while (plotter.CanPlotToDrive(drive))
                             {
@@ -144,7 +149,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 plotter.Caches = configPlotter.WorkingDirectories.Caches.SelectOrDefault(x => _directoryFactory.Create(x)).ToArrayOrDefault();
                 plotter.WorkingDirectory = _directoryFactory.Create(configPlotter.WorkingDirectories.WorkingDirectory);
                 plotter.ArchiveProgressFiles = configPlotter.WorkingDirectories.ArchiveProgressFiles;
-                plotter.PlotterDelayers = configPlotter.DelaySettings.SelectOrDefault(x => _objectFactory.Build<IPlotterDelayer>(x.Name, x.Arguments)).ToArrayOrDefault();
+                plotter.PlotterDelayers = configPlotter.DelaySettings.SelectOrDefault(x => _serviceFactory.Resolve<IPlotterDelayer>(x.Name).InjectProperties(x.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate()).ToArrayOrDefault();
 
                 plotter.TaggedForDeletion = false;
 
@@ -168,6 +173,8 @@ namespace Sels.Crypto.Chia.PlotBot
             var drivesToDelete = Drives.Where(x => !config.Drives.Any(d => d.Alias.Equals(x.Alias, StringComparison.OrdinalIgnoreCase)));
             drivesToDelete.Execute(x => { Drives.Remove(x); LoggingServices.Log($"Removed drive {x.Alias}"); });
 
+            var driveClearers = config.Settings.DriveClearers.SelectOrDefault(x => _serviceFactory.Resolve<IDriveSpaceClearer>(x.Name).InjectProperties(x.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate()).ToArrayOrDefault();
+
             // Add or update drives
             foreach (var configDrive in config.Drives)
             {
@@ -180,6 +187,8 @@ namespace Sels.Crypto.Chia.PlotBot
                 drive.Alias = configDrive.Alias;
                 drive.Directory = _directoryFactory.Create(configDrive.Directory);
                 drive.Priority = configDrive.Priority;
+                drive.DriveClearers = driveClearers;
+               
 
                 if (isNew)
                 {

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Sels.Crypto.Chia.PlotBot.Contracts
 {
-    public interface IPlotterDelayer
+    public interface IPlotterDelayer : IComponent<IPlotterDelayer>
     {
         /// <summary>
         /// Checks if <paramref name="plotter"/> is allowed to start a new instance on <paramref name="drive"/>.
