@@ -12,7 +12,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace Sels.Crypto.Chia.PlotBot.DriveClearers
+namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 {
     /// <summary>
     /// Clears old plots by checking the the date in the file name.

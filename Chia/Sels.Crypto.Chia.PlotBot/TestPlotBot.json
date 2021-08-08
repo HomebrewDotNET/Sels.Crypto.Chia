@@ -8,7 +8,7 @@
       {
         "Name": "K32",
         "CreationSize": 220.0,
-        "FinalSize": 10100.4
+        "FinalSize": 101.4
       }
     ],
     "DriveClearers": [
@@ -37,6 +37,12 @@
         ],
         "WorkingDirectory": "/mnt/g/App",
         "ArchiveProgressFiles": true
+      },
+      "PlotFileNameSeeker": {
+        "Name": "String",
+        "Arguments": {
+          "Filter": "plot-"
+        }
       },
       "DelaySettings": [
         {

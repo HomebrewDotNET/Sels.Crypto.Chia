@@ -9,6 +9,11 @@ namespace Sels.Crypto.Chia.PlotBot
         public const string ServiceName = "Plot Bot";
         public const string LoggerName = "PlotBot";
 
+        public static class Plotting
+        {
+            public const string PlotFileExtension = ".plot";
+        }
+
         public static class Logging
         {
             public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message} ${exception}";
@@ -68,6 +73,15 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Components
         {
+            public static class PlotFileNameSeeker
+            {
+                public const string String = "String";
+                public const string StringFilter = "Filter";
+                public const string StringFilterArg = "plot-";
+
+                public const string Regex = "Regex";
+            }
+
             public static class Clearer
             {
                 public const string OgDate = "OgDate";
