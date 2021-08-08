@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Sels.Core.Extensions.Conversion;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot.Factories
 {

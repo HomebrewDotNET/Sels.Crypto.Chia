@@ -46,7 +46,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             plottingService.ValidateArgument(nameof(plottingService));
             plotCommand.ValidateArgumentNotNullOrWhitespace(nameof(plotCommand));
             registrationAction.ValidateArgument(nameof(registrationAction));
-            ProgressFile = new FileInfo(Path.Combine(plotter.WorkingDirectory.Directory.FullName, $"{Name}.txt"));
+            ProgressFile = new FileInfo(Path.Combine(plotter.WorkingDirectory.Source.FullName, $"{Name}.txt"));
             ProgressFile.Write(string.Empty);
 
             StartTime = DateTime.Now;

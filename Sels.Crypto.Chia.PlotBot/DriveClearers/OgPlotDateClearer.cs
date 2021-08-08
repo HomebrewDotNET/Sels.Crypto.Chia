@@ -1,4 +1,5 @@
-﻿using Sels.Core.Components.FileSizes.Byte;
+﻿using Microsoft.Extensions.Logging;
+using Sels.Core.Components.FileSizes.Byte;
 using Sels.Core.Components.FileSizes.Byte.Binary;
 using Sels.Core.Components.Logging;
 using Sels.Core.Extensions;
@@ -16,13 +17,14 @@ namespace Sels.Crypto.Chia.PlotBot.DriveClearers
     /// <summary>
     /// Clears old plots by checking the the date in the file name.
     /// </summary>
-    public class OldPlotDateClearer : IDriveSpaceClearer
+    public class OgPlotDateClearer : IDriveSpaceClearer
     {
         // Constants
+        private const string Name = "Og Plot Date Clearer";
         private const string PlotFilter = "*.plot";
         private const int StartIndex = 9;
-        private const int DateLength = 19;
-        private const string DateTimeFormat = "yyyy-MM-dd-hh-mm-ss";
+        private const int DateLength = 16;
+        private const string DateTimeFormat = "yyyy-MM-dd-hh-mm";
 
         // Properties
         /// <summary>
@@ -47,7 +49,7 @@ namespace Sels.Crypto.Chia.PlotBot.DriveClearers
                 clearableFile.Delete();
                 deletedSize += fileSize;
 
-                if(deletedSize > requiredSize)
+                if(deletedSize >= requiredSize)
                 {
                     break;
                 }
@@ -58,30 +60,32 @@ namespace Sels.Crypto.Chia.PlotBot.DriveClearers
                 LoggingServices.Log($"Freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
             }
 
-            return drive.AvailableFreeSize > requiredSize;
+            return deletedSize >= requiredSize;
         }
 
         public IEnumerable<FileInfo> GetClearableFiles(Drive drive, FileSize requiredSize)
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            var plots = drive.Directory.Directory.GetFiles(PlotFilter, SearchOption.AllDirectories);
+            var plots = drive.Directory.Source.GetFiles(PlotFilter, SearchOption.AllDirectories);
+
+            LoggingServices.Log(LogLevel.Debug, $"{Name} found {plots.Length} plots to check");
 
             if (plots.HasValue())
             {
-                var currentIndex = 0;
-
-                while (currentIndex < plots.Length && drive.AvailableFreeSize < requiredSize)
+                foreach (var plot in plots)
                 {
-                    var plotFile = plots[currentIndex];
-
-                    var datePart = plotFile.Name.Substring(StartIndex, DateLength);
+                    var datePart = plot.Name.Substring(StartIndex, DateLength);
 
                     if (DateTime.TryParseExact(datePart, DateTimeFormat, null, DateTimeStyles.None, out var date) && date < ThresHold)
                     {
-                        yield return plotFile;
+                        LoggingServices.Log(LogLevel.Debug, $"Plot {plot.FullName} was created on {date} and passed the threshold date of {ThresHold}");
+                        yield return plot;
                     }
-                    currentIndex++;
+                    else
+                    {
+                        LoggingServices.Log(LogLevel.Debug, $"Plot {plot.FullName} was created on {date} and did not pass the threshold date of {ThresHold}");
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ using Sels.Core.Extensions.Linq;
 using System.Linq;
 using Sels.Core.Components.Parameters;
 using Microsoft.Extensions.Logging;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
@@ -166,14 +167,14 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Threads, threads);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Buckets, Buckets);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Ram, ram);
-            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Destination, drive.Directory.Directory.FullName);
+            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Destination, drive.Directory.Source.FullName);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PoolKey, PoolKey);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PoolContractAddress, PoolContractAddress);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.FarmerKey, FarmerKey);
 
             for(int i = 0; i < Caches.Length; i++)
             {
-                parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", Caches[i].Directory.FullName);
+                parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", Caches[i].Source.FullName);
             }
 
             // Generate command
@@ -213,7 +214,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             Instances.ForceExecute(x => x.Dispose(), (x, ex) => LoggingServices.Log($"Error occured while disposing plotting instance {x.Name}", ex));
 
             // Clear cache directories
-            Caches.ForceExecute(x => x.Directory.Clear());
+            Caches.ForceExecute(x => x.Source.Clear());
         }
     }
 }

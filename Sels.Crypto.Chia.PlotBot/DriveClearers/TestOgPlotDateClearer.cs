@@ -11,7 +11,7 @@ using System.IO;
 
 namespace Sels.Crypto.Chia.PlotBot.DriveClearers
 {
-    public class TestOldPlotDateClearer : OldPlotDateClearer
+    public class TestOgPlotDateClearer : OgPlotDateClearer
     {
         public override bool ClearSpace(Drive drive, FileSize requiredSize)
         {
@@ -30,7 +30,7 @@ namespace Sels.Crypto.Chia.PlotBot.DriveClearers
 
                 deletedSize += fileSize;
 
-                if (deletedSize > requiredSize)
+                if (deletedSize >= requiredSize)
                 {
                     break;
                 }              
@@ -41,7 +41,7 @@ namespace Sels.Crypto.Chia.PlotBot.DriveClearers
                 LoggingServices.Log($"Test Mode: Would have freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
             }
 
-            return drive.AvailableFreeSize > requiredSize;
+            return deletedSize >= requiredSize;
         }
     }
 }

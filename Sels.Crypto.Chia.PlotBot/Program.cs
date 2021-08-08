@@ -32,6 +32,7 @@ using Sels.Crypto.Chia.PlotBot.PlotDelayers;
 using Sels.Core.Components.IoC;
 using Sels.Core.Contracts.Conversion;
 using Sels.Crypto.Chia.PlotBot.DriveClearers;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -107,11 +108,11 @@ namespace Sels.Crypto.Chia.PlotBot
                         // Drive clearers
                         if (testMode)
                         {
-                            factory.Register<IDriveSpaceClearer, TestOldPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, TestOgPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
                         }
                         else
                         {
-                            factory.Register<IDriveSpaceClearer, OldPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, OgPlotDateClearer>(ServiceScope.Singleton, PlotBotConstants.Components.Clearer.OgDate);
                         }
 
                         return factory;

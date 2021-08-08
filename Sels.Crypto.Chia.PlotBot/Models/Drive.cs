@@ -12,6 +12,7 @@ using Sels.Core.Extensions.FileSizes;
 using Microsoft.Extensions.Logging;
 using Sels.Core.Components.FileSizes.Byte.Binary;
 using Sels.Crypto.Chia.PlotBot.Contracts;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
@@ -75,10 +76,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 if(DriveClearers.Any(x => x.ClearSpace(this, size)))
                 {
                     LoggingServices.Log($"Drive {Alias} has cleared extra space");
+                    return true;
                 }
             }
-
-            enoughSpace = AvailableFreeSize > size;
 
             if (!enoughSpace)
             {

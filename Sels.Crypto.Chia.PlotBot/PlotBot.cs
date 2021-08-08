@@ -16,6 +16,7 @@ using Sels.Core.Extensions.DependencyInjection;
 using Sels.Core.Components.Logging;
 using Microsoft.Extensions.Logging;
 using Sels.Core.Contracts.Conversion;
+using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
