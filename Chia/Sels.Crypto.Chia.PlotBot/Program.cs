@@ -33,7 +33,10 @@ using Sels.Core.Contracts.Conversion;
 using Sels.Core.Templates.FileSystem;
 using Sels.Crypto.Chia.PlotBot.Components.PlotDelayers;
 using Sels.Crypto.Chia.PlotBot.Components.DriveClearers;
-using Sels.Crypto.Chia.PlotBot.Components.PlotFileNameSeekers;
+using Sels.Core.Extensions.Linq;
+using System.Net.Mail;
+using Sels.Core.Components.Logging;
+using Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -66,7 +69,6 @@ namespace Sels.Crypto.Chia.PlotBot
                     services.AddSingleton(x => Helper.App.BuildDefaultConfigurationFile());
 
                     // Register services
-                    services.AddHostedService<PlotBotManager>();
                     services.AddSingleton<PlotBot>();
                     services.AddSingleton<IConfigProvider, ConfigProvider>();
                     services.AddSingleton<IPlotBotConfigValidator, ConfigValidationProfile>();
@@ -90,10 +92,12 @@ namespace Sels.Crypto.Chia.PlotBot
 
                     if (testMode)
                     {
+                        services.AddHostedService<TestPlotBotManager>();
                         services.AddSingleton<IPlottingService, TestLinuxPlottingService>();
                     }
                     else
                     {
+                        services.AddHostedService<PlotBotManager>();
                         services.AddSingleton<IPlottingService, LinuxPlottingService>();
                     }
 
@@ -102,9 +106,11 @@ namespace Sels.Crypto.Chia.PlotBot
                         var factory = new UnityServiceFactory();
                         factory.LoadFrom(services);
 
-                        // File name seekers
-                        factory.Register<IPlotFileNameSeeker, StringPlotFileNameSeeker>(ServiceScope.Scoped, PlotBotConstants.Components.PlotFileNameSeeker.String);
-                        factory.Register<IPlotFileNameSeeker, RegexPlotFileNameSeeker>(ServiceScope.Scoped, PlotBotConstants.Components.PlotFileNameSeeker.Regex);
+                        // Progress parsers
+                        factory.Register<IPlotProgressParser, StringPlotProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.String);
+                        factory.Register<IPlotProgressParser, RegexPlotProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.Regex);
+                        factory.Register<IPlotProgressParser, MadMaxProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.MadMax);
+                        factory.Register<IPlotProgressParser, ChiaProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.Chia);
 
                         // Plotter delayers
                         factory.Register<IPlotterDelayer, LastStartedDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.TimeStarted);
@@ -124,18 +130,42 @@ namespace Sels.Crypto.Chia.PlotBot
                     });
 
                     // Setup logging
-
-                    services.AddLogging(x => SetupLogging(configProvider, x));
+                    services.AddLogging(x => SetupLogging(configProvider, x, testMode));
                 });
 
-        private static void SetupLogging(IConfigProvider configProvider, ILoggingBuilder builder)
+        private static void SetupLogging(IConfigProvider configProvider, ILoggingBuilder builder, bool isTestMode)
         {
             // Read config
             var devMode = configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.DevMode, false);
-            var minLogLevel = configProvider.GetAppSetting<LogLevel>(PlotBotConstants.Config.AppSettings.MinLogLevel);
-            var logDirectory = configProvider.GetAppSetting(PlotBotConstants.Config.AppSettings.LogDirectory, true, x => x.HasValue() && Directory.Exists(x), x => $"Directory cannot be empty and Directory must exist on the file system. Was <{x}>");
-            var archiveSize = configProvider.GetAppSetting<long>(PlotBotConstants.Config.AppSettings.ArchiveSize, true, x => x > 1, x => $"File size cannot be empty and file size must be above 1 {MegaByte.FileSizeAbbreviation}");
+            var minLogLevel = configProvider.GetSectionSetting<LogLevel>(PlotBotConstants.Config.LogSettings.MinLogLevel, nameof(PlotBotConstants.Config.LogSettings));
+            var logDirectory = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.LogDirectory, nameof(PlotBotConstants.Config.LogSettings), true, x => x.HasValue() && Directory.Exists(x), x => $"Directory cannot be empty and Directory must exist on the file system. Was <{x}>");
+            var archiveSize = configProvider.GetSectionSetting<long>(PlotBotConstants.Config.LogSettings.ArchiveSize, nameof(PlotBotConstants.Config.LogSettings), true, x => x > 1, x => $"File size cannot be empty and file size must be above 1 {MegaByte.FileSizeAbbreviation}");
             var archiveFileSize = FileSize.CreateFromSize<MegaByte>(archiveSize);
+
+            // Logging config
+            var mailingEnabled = configProvider.IsSectionDefined(nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+            LogLevel minMailLogLevel = LogLevel.Warning;
+            string mailSender = string.Empty;
+            string mailReceivers = string.Empty;
+            string server = string.Empty;
+            int port = 1;
+            string username = string.Empty;
+            string password = string.Empty;
+            bool isSsl = false;
+
+            // Read mail config if defined
+            if (mailingEnabled)
+            {
+                minMailLogLevel = configProvider.GetSectionSetting<LogLevel>(PlotBotConstants.Config.LogSettings.Mail.MinLogLevel, true, null, null, nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                mailSender = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.Mail.Sender, true, HasStringValue, x => CreateConfigValueEmptyMessage(PlotBotConstants.Config.LogSettings.Mail.Sender, x), nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                mailReceivers = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.Mail.Receivers, true, HasStringValue, null, nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                server = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.Mail.Server, true, HasStringValue, x => CreateConfigValueEmptyMessage(PlotBotConstants.Config.LogSettings.Mail.Server, x), nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                port = configProvider.GetSectionSetting<int>(PlotBotConstants.Config.LogSettings.Mail.Port, true, x => x > 0, x => $"Port must be above 0. Was {x}", nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                username = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.Mail.Username, true, HasStringValue, x => CreateConfigValueEmptyMessage(PlotBotConstants.Config.LogSettings.Mail.Username, x), nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                password = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.Mail.Password, true, HasStringValue, x => CreateConfigValueEmptyMessage(PlotBotConstants.Config.LogSettings.Mail.Password, x), nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+                isSsl = configProvider.GetSectionSetting<bool>(PlotBotConstants.Config.LogSettings.Mail.Ssl, true, null, null, nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
+            }
+
 
             var logDirectoryInfo = new DirectoryInfo(logDirectory);
             var minLogLevelOrdinal = minLogLevel.ConvertTo<int>();
@@ -170,9 +200,43 @@ namespace Sels.Crypto.Chia.PlotBot
             // Fatal errors only
             config.AddRule(NLog.LogLevel.Fatal, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotCritical);
 
+            // Create mail logging
+            if (mailingEnabled)
+            {
+                config.AddTarget(new MailTarget()
+                {
+                    Name = PlotBotConstants.Logging.Targets.PlotBotMail,
+                    SmtpAuthentication = SmtpAuthenticationMode.Basic,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    Subject = PlotBotConstants.Logging.MailSubjectLayout,
+                    Body = PlotBotConstants.Logging.MailBodyLayout,
+                    From = mailSender,
+                    To = mailReceivers,
+                    Html = false,
+                    SmtpServer = server,
+                    SmtpPort = port,
+                    SmtpUserName = username,
+                    SmtpPassword = password,
+                    Timeout = 5000,
+                    EnableSsl = isSsl
+                });
+
+                config.AddRule(NLog.LogLevel.FromOrdinal(minMailLogLevel.ConvertTo<int>()), NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotMail);
+            }
+
             // Add loggers
             builder.AddConsole();
             builder.AddNLog(config);
+        }
+
+        private static bool HasStringValue(string value)
+        {
+            return value.HasValue();
+        }
+
+        private static string CreateConfigValueEmptyMessage(string name, string value)
+        {
+            return $"{name} cannot be empty or whitespace. Was <{value}>";
         }
 
         private static FileTarget CreateLogFileTarget(string targetName, DirectoryInfo logDirectory, FileSize archiveSize, string layout = PlotBotConstants.Logging.Layout)

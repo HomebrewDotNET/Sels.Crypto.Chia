@@ -41,15 +41,16 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
                 .MustBePositive(x => x.FinalSize, x => $"{x.Property.Name} must be larger than 0. Was <{x.PropertyValue}>");
 
             CreateValidator<PlotterConfig>()
+                .MustBeZeroOrPositive(x => x.Timeout, x => $"{x.Property.Name} must be above or equal to 0. Was <{x.PropertyValue}>")
                 .CannotBeNullOrWhiteSpace(x => x.Alias, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
                 .CannotBeNullOrWhiteSpace(x => x.PlotSize, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
                 .AddValidValidation(x => x.MaxInstances, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
                 .AddValidValidation(x => x.TotalThreads, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
                 .AddValidValidation(x => x.TotalRam, x => x >= 1000, x => $"{x.Property.Name} must be equal or above 1000")
                 .AddValidValidation(x => x.Buckets, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
-                .CannotBeNull(x => x.PlotFileNameSeeker, x => $"{x.Property.Name} section must be defined")
+                .CannotBeNull(x => x.PlotProgressParser, x => $"{x.Property.Name} section must be defined")
                 .CannotBeNull(x => x.WorkingDirectories, x => $"{x.Property.Name} section must be defined")
-                .AddValidValidation(x => x.PlotFileNameSeeker, x => factory.IsRegistered<IPlotFileNameSeeker>(x.Name), x => $"{x.Property.Name} is not a known file name seeker. Was <{x.PropertyValue}>")
+                .AddValidValidation(x => x.PlotProgressParser, x => factory.IsRegistered<IPlotProgressParser>(x.Name), x => $"{x.Property.Name} is not a known file name seeker. Was <{x.PropertyValue}>")
                 .AddValidCollectionValidation(x => x.DelaySettings, x => factory.IsRegistered<IPlotterDelayer>(x.Name), x => $"{x.Property.Name} is not a known delayer. Was <{x.ElementValue}>");
 
             CreateValidator<PlotterWorkingConfig>()
@@ -59,8 +60,7 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
                 .IsValidDirectory(x => x.WorkingDirectory, x => $"{x.Property.Name} must be valid directory. Was <{x.PropertyValue}>");
 
             CreateValidator<ComponentConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                
+                .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")            
                 .AddValidCollectionValidation(x => x.Arguments, x => x.Key.HasValue(), x => $"Argument key cannot be empty or whitespace. Was <{x.ElementValue}>");
 
             CreateValidator<DriveConfig>()

@@ -17,6 +17,7 @@ using Sels.Core.Components.Logging;
 using Microsoft.Extensions.Logging;
 using Sels.Core.Contracts.Conversion;
 using Sels.Core.Templates.FileSystem;
+using System.IO;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -33,7 +34,13 @@ namespace Sels.Crypto.Chia.PlotBot
         /// Boolean indicating if plot bot can start new instances.
         /// </summary>
         public bool CanStartNewInstances { get; set; } = true;
+        /// <summary>
+        /// Plotters that plot bot can use to fill drives with plots.
+        /// </summary>
         public List<Plotter> Plotters { get; private set; } = new List<Plotter>();
+        /// <summary>
+        /// Drives that plot bot needs to fill up
+        /// </summary>
         public List<Drive> Drives { get; private set; } = new List<Drive>();
 
         public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IServiceFactory serviceFactory, IGenericTypeConverter typeConverter, IPlottingService plottingService)
@@ -57,9 +64,18 @@ namespace Sels.Crypto.Chia.PlotBot
                     var result = x.GetResult();
                     x.Dispose();
                     return result;
-                }, (x, ex) => { LoggingServices.Log($"Something went wrong when getting the result from instance: {x.Name}", ex); x.Dispose(); });
+                }, (x, ex) => { LoggingServices.Log($"Something went wrong when getting the result from instance {x.Name}", ex); x.Dispose(); });
 
                 result.CreatedPlots = createdPlots.ToArray();
+            }
+
+            // Handle instances in timeout
+            using (LoggingServices.TraceAction(LogLevel.Debug, "Handle timeouts"))
+            {
+                var timedOutPlotters = Plotters.SelectMany(x => x.Instances).Where(x => x.IsPlotting && x.TimeoutDate.HasValue() && x.TimeoutDate < DateTime.Now);
+                timedOutPlotters.ForceExecute(x => {
+                    LoggingServices.Trace(LogLevel.Error, $"Plotting instance {x.Name} could not create a plot within the configured timeout period of {x.Plotter.Timeout} hours. Plot command output:", x.ProgressFile.Read());
+                }, (x, ex) => { LoggingServices.Log($"Something went wrong disposing instance {x.Name} that timed out", ex); x.Dispose(); });
             }
 
             // Delete completed plotters
@@ -133,6 +149,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 var plotter = isNew ? new Plotter(_plottingService) : existingPlotter;
 
                 plotter.Enabled = configPlotter.Enabled;
+                plotter.Timeout = configPlotter.Timeout;
                 plotter.Alias = configPlotter.Alias;
 
                 plotter.PoolKey = config.Settings.PoolKey;
@@ -149,7 +166,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 plotter.Caches = configPlotter.WorkingDirectories.Caches.SelectOrDefault(x => _directoryFactory.Create(x)).ToArrayOrDefault();
                 plotter.WorkingDirectory = _directoryFactory.Create(configPlotter.WorkingDirectories.WorkingDirectory);
                 plotter.ArchiveProgressFiles = configPlotter.WorkingDirectories.ArchiveProgressFiles;
-                plotter.PlotFileNameSeeker = _serviceFactory.Resolve<IPlotFileNameSeeker>(configPlotter.PlotFileNameSeeker.Name).InjectProperties(configPlotter.PlotFileNameSeeker.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate();
+                plotter.PlotProgressParser = _serviceFactory.Resolve<IPlotProgressParser>(configPlotter.PlotProgressParser.Name).InjectProperties(configPlotter.PlotProgressParser.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate();
                 plotter.PlotterDelayers = configPlotter.DelaySettings.SelectOrDefault(x => _serviceFactory.Resolve<IPlotterDelayer>(x.Name).InjectProperties(x.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate()).ToArrayOrDefault();
 
                 plotter.TaggedForDeletion = false;
@@ -223,4 +240,6 @@ namespace Sels.Crypto.Chia.PlotBot
         public string[] StartedInstances { get; set; } = new string[0];
         public int DeletedPlotters { get; set; }
     }
+
+
 }

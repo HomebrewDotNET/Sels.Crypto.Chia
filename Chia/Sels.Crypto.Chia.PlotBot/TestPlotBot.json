@@ -38,7 +38,7 @@
         "WorkingDirectory": "/mnt/g/App",
         "ArchiveProgressFiles": true
       },
-      "PlotFileNameSeeker": {
+      "PlotProgressParser": {
         "Name": "String",
         "Arguments": {
           "Filter": "plot-"
@@ -48,7 +48,7 @@
         {
           "Name": "ProgressFile",
           "Arguments": {
-            "Filter":  "Phase 1 took"
+            "Filter": "Phase 1 took"
           }
         }
       ]

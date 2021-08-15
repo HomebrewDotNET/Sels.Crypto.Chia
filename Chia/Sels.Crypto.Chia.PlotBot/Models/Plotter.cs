@@ -42,6 +42,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// </summary>
         public bool Enabled { get; set; } = true;
         /// <summary>
+        /// How many hours before a plotting instance is considered timed out. This will cause Plot Bot to dispose the instance and raise an error.
+        /// </summary>
+        public int Timeout { get; set; }
+        /// <summary>
         /// Unique name to identifiy this plotter config.
         /// </summary>
         public string Alias { get; set; }
@@ -49,6 +53,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// Size of plots that this plotter will create.
         /// </summary>
         public PlotSize PlotSize { get; set; }
+        /// <summary>
+        /// How many plots the instance will create.
+        /// </summary>
+        public int PlotAmount { get; set; } = 1;
         /// <summary>
         /// How many instances this plotter can use.
         /// </summary>
@@ -71,9 +79,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         public string PlotCommand { get; set; }
 
         /// <summary>
-        /// Component that searches for the plot file name when an instance is plotting.
+        /// Component that extracts information from the progress file.
         /// </summary>
-        public IPlotFileNameSeeker PlotFileNameSeeker { get; set; }
+        public IPlotProgressParser PlotProgressParser { get; set; }
 
         /// <summary>
         /// Checks if plotter is allowed to plot to a certain drive
@@ -143,6 +151,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             drive.ValidateArgument(nameof(drive));
 
+            LoggingServices.Debug($"{Alias} dividing resources to plot to {drive.Alias}");
             string plotCommand;
             var threads = TotalThreads / MaxInstances;
             var ram = TotalRam / MaxInstances;
@@ -162,13 +171,17 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
             LoggingServices.Log($"New plotting instance will use {threads} Threads, {ram}MB Ram, {Buckets} buckets to create {PlotSize.Name} plots of size {PlotSize.FinalSize} using a cache size of {PlotSize.CreationSize} for destination drive {drive.Alias}");
 
+            LoggingServices.Debug($"{Alias} preparing parameters to plot to {drive.Alias}");
             // Prepare parameters
             var parameterizer = new Parameterizer(false);
 
+            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.MadMaxCommand, PlotBotConstants.Settings.MadMaxCommand);
+            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.ChiaCommand, PlotBotConstants.Settings.ChiaCommand);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PlotterAlias, Alias);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PlotterInstance, followNumber);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.DriveAlias, drive.Alias);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PlotSize, PlotSize.Name);
+            parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PlotAmount, PlotAmount);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Threads, threads);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Buckets, Buckets);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.Ram, ram);
@@ -177,9 +190,14 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.PoolContractAddress, PoolContractAddress);
             parameterizer.AddParameter(PlotBotConstants.Parameters.Names.FarmerKey, FarmerKey);
 
+            LoggingServices.Debug($"{Alias} creating cache directories to plot to {drive.Alias}");
+            var caches = new List<DirectoryInfo>();
             for(int i = 0; i < Caches.Length; i++)
             {
-                parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", Caches[i].Source.FullName);
+                var cacheDirectory = Caches[i].Source;
+                var instanceDirectory = cacheDirectory.CreateSubdirectory(Guid.NewGuid().ToString());
+                caches.Add(instanceDirectory);
+                parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", instanceDirectory);
             }
 
             // Generate command
@@ -188,10 +206,20 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 plotCommand = parameterizer.Apply(PlotCommand);
             }
 
-            var instance = new PlottingInstance(followNumber, _plottingService, PlotFileNameSeeker, plotCommand, this, drive, PlotSize.FinalSize, x => { RegisterInstance(x); drive.RegisterInstance(x); }, x => { RemoveInstance(x); drive.RemoveInstance(x); });
+            LoggingServices.Debug($"{Alias} creating instance to plot to {drive.Alias}");
+            var instance = new PlottingInstance(followNumber, _plottingService, PlotProgressParser, plotCommand, Timeout, this, drive, PlotSize.FinalSize, x => {
+                // Delete cache directories
+                caches.ForceExecute(x => x.Delete(true), (x, ex) => LoggingServices.Log($"Could not delete cache directory {x.FullName} for plotting instance {x.Name}", ex));
+                // Remove running instance
+                RemoveInstance(x);
+                drive.RemoveInstance(x);
+            });
+
+            // Register running instance
+            RegisterInstance(instance);
+            drive.RegisterInstance(instance);
 
             LoggingServices.Log($"Plotter {Alias} has created an new instance with name {instance.Name} that will plot to {drive.Alias}");
-
             return instance;
         }
 
@@ -217,9 +245,6 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         {
             // Stop all current instances
             Instances.ForceExecute(x => x.Dispose(), (x, ex) => LoggingServices.Log($"Error occured while disposing plotting instance {x.Name}", ex));
-
-            // Clear cache directories
-            Caches.ForceExecute(x => x.Source.Clear());
         }
     }
 }
