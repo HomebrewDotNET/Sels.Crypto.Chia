@@ -16,8 +16,11 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Logging
         {
-            public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message} ${exception}";
-            public const string FullLayout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message} ${newline}${exception:format=tostring}";
+            public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}. ${exception}";
+            public const string FullLayout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}: ${newline}${exception:format=ToString}";
+            public const string MailSubjectLayout = ServiceName + " ${machinename} ${level:uppercase=true}";
+            public const string MailBodyLayout = "Date: ${longdate}${newline}Message: ${message}${newline}Error: ${newline}${exception:format=ToString}";
+
             public const string ArchiveFolder = "Archive";
 
             public static class Categories
@@ -30,6 +33,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string PlotBotAll = "PlotBot_All";
                 public const string PlotBotError = "PlotBot_Error";
                 public const string PlotBotCritical = "PlotBot_Critical";
+                public const string PlotBotMail = "PlotBot_Mail";
             }
         }
 
@@ -37,23 +41,41 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             public static class AppSettings
             {
-                public const string DevMode = "PlotBot.Service.DevMode";
-                public const string TestMode = "PlotBot.Service.TestMode";
-                public const string ConfigFile = "PlotBot.Service.ConfigFile";
-                public const string Interval = "PlotBot.Service.Interval";
-                public const string MinLogLevel = "PlotBot.Logging.MinLevel";
-                public const string LogDirectory = "PlotBot.Logging.Directory";
-                public const string ArchiveSize = "PlotBot.Logging.ArchiveSize";
+                public const string DevMode = "Service.DevMode";
+                public const string TestMode = "Service.TestMode";
+                public const string ConfigFile = "Service.ConfigFile";
+                public const string Interval = "Service.Interval";
+            }
+
+            public static class LogSettings
+            {
+                public const string MinLogLevel = "MinLevel";
+                public const string LogDirectory = "Directory";
+                public const string ArchiveSize = "ArchiveSize";
+
+                public static class Mail
+                {
+                    public const string MinLogLevel = "MinLevel";
+                    public const string Sender = "Sender";
+                    public const string Receivers = "Receivers";
+                    public const string Server = "Server";
+                    public const string Port = "Port";
+                    public const string Username = "Username";
+                    public const string Password = "Password";
+                    public const string Ssl = "Ssl";
+                }
             }
         }
 
         public static class Settings
         {
-            public static string DefaultCommand = $"/opt/chia-plotter/build/chia_plot -n 1 -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/ -2 {Parameters.CacheTwo}/ -d {Parameters.Destination}/ -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
+            public static string ChiaCommand = $"cd /opt/chia-blockchain && . ./activate && chia plots create -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -k {Parameters.PlotSize} -b {Parameters.Ram} -e -r {Parameters.Threads} -u {Parameters.Buckets} -n {Parameters.PlotAmount} -t {Parameters.CacheTwo}/ -2 {Parameters.CacheOne}/ -d {Parameters.Destination}/";
+            public static string MadMaxCommand = $"/opt/chia-plotter/build/chia_plot -n {Parameters.PlotAmount} -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/ -2 {Parameters.CacheTwo}/ -d {Parameters.Destination}/ -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
+            public static string DefaultCommand = MadMaxCommand;
 
             public static class Plotters
             {
-                public const string DefaultPlotSize = "K32";
+                public const string DefaultPlotSize = "32";
                 public const int DefaultInstances = 1;
                 public const int DefaultThreads = 4;
                 public const int DefaultRam = 4000;
@@ -73,13 +95,23 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Components
         {
-            public static class PlotFileNameSeeker
+            public static class PlotProgressParser
             {
                 public const string String = "String";
                 public const string StringFilter = "Filter";
                 public const string StringFilterArg = "plot-";
+                public const string StringTransferExtension = "TransferExtension";
+                public const string StringTransferExtensionArg = ".tmp";
 
                 public const string Regex = "Regex";
+
+                public const string MadMax = "MadMax";
+                public const string MadMaxFilterArg = "plot-";               
+                public const string MadMaxTransferExtensionArg = ".tmp";
+
+                public const string Chia = "Chia";
+                public const string ChiaFilterArg = ".plot";
+                public const string ChiaTransferExtensionArg = ".tmp";
             }
 
             public static class Clearer
@@ -111,6 +143,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string DriveAlias = "DriveAlias";
 
                 public const string PlotSize = "PlotSize";
+                public const string PlotAmount = "PlotAmount";
                 public const string Threads = "Threads";
                 public const string Buckets = "Buckets";
                 public const string Ram = "Ram";
@@ -120,6 +153,9 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string FarmerKey = "FarmerKey";
 
                 public const string Cache = "$Cache";
+
+                public const string MadMaxCommand = "MadMaxCommand";
+                public const string ChiaCommand = "ChiaCommand";
             }
 
             public const string PlotterAlias = "${{" + Names.PlotterAlias + "}}";
@@ -127,6 +163,7 @@ namespace Sels.Crypto.Chia.PlotBot
             public const string DriveAlias = "${{" + Names.DriveAlias + "}}";
 
             public const string PlotSize = "${{" + Names.PlotSize + "}}";
+            public const string PlotAmount = "${{" + Names.PlotAmount + "}}";
             public const string Threads = "${{" + Names.Threads + "}}";
             public const string Buckets = "${{" + Names.Buckets + "}}";
             public const string Ram = "${{" + Names.Ram + "}}";

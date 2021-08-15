@@ -122,7 +122,7 @@ namespace Sels.Crypto.Chia.PlotBot
                         else
                         {
                             // Safe to reload
-                            LoggingServices.Log($"{PlotBotConstants.ServiceName} doesn't have any instances running or can be hot reloaded so config can be safely reloaded. Reloading config");
+                            LoggingServices.Log($"{PlotBotConstants.ServiceName} can safely reload the configuration. Reloading config");
                             _plotBot.ReloadConfig(newConfig);
                             _plotBot.CanStartNewInstances = true;
                         }
@@ -252,6 +252,22 @@ namespace Sels.Crypto.Chia.PlotBot
 
                 throw;
             }            
+        }
+    }
+
+    public class TestPlotBotManager : PlotBotManager
+    {
+        public TestPlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator, PlotBot plotBot) : base(factory, configProvider, configValidator, plotBot)
+        {
+            SendTestLogs();
+        }
+
+        private void SendTestLogs()
+        {
+            LoggingServices.Log(LogLevel.Information, $"This is a test message from {PlotBotConstants.ServiceName}");
+            LoggingServices.Log(LogLevel.Warning, $"This is a warning test from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
+            LoggingServices.Log(LogLevel.Error, $"This is an error test from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
+            LoggingServices.Log(LogLevel.Critical, $"This is a fatal error mail from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
         }
     }
 }

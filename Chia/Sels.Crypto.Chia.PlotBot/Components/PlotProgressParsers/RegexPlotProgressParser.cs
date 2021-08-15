@@ -7,23 +7,21 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using System.Threading;
+using System.Text.RegularExpressions;
 using Sels.Core;
-using System.Linq;
 using Sels.Core.Components.Logging;
 
-namespace Sels.Crypto.Chia.PlotBot.Components.PlotFileNameSeekers
+namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
 {
     /// <summary>
-    /// Seeker that searches for words that contains the filter
+    /// Seeker that uses a regex string to search for the word containing the plot name
     /// </summary>
-    public class StringPlotFileNameSeeker : IPlotFileNameSeeker
+    public class RegexPlotProgressParser : BasePlotProgressParser
     {
-        // Properties
-        public string Filter { get; set; }
-
-        public bool TrySeekPlotFileName(PlottingInstance instance, out string plotFileName)
+        public override bool TrySeekPlotFileName(PlottingInstance instance, out string plotFileName)
         {
             using var logger = LoggingServices.TraceMethod(this);
+
             instance.ValidateArgument(nameof(instance));
             plotFileName = string.Empty;
 
@@ -39,11 +37,11 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotFileNameSeekers
             // Check file content for words matching the regex filter
             if (progressFileContent.HasValue())
             {
-                LoggingServices.Debug($"Looking for words that contain {Filter}");
-                foreach (var match in progressFileContent.Split().Where(x => x.Contains(Filter)))
+                LoggingServices.Debug($"Looking for words that match regex filter {Filter}");
+                foreach (Match match in Regex.Matches(progressFileContent, Filter))
                 {
-                    var matchedFileName = match;
-                    LoggingServices.Debug($"Found word match {matchedFileName}");
+                    var matchedFileName = match.Value;
+                    LoggingServices.Debug($"Found regex match {matchedFileName}");
 
                     // Append extension if it's missing
                     if (!matchedFileName.EndsWith(PlotBotConstants.Plotting.PlotFileExtension))
@@ -53,10 +51,10 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotFileNameSeekers
 
                     matchedFileName = Path.GetFileName(matchedFileName);
 
-                    if (matchedFileName.HasValue() && Helper.FileSystem.IsValidFileName(matchedFileName))
+                    if(matchedFileName.HasValue() && Helper.FileSystem.IsValidFileName(matchedFileName))
                     {
                         plotFileName = matchedFileName;
-                        LoggingServices.Debug($"Found plot file name {plotFileName} matching word filter {Filter}");
+                        LoggingServices.Debug($"Found plot file name {plotFileName} matching regex filter {Filter}");
                         return true;
                     }
                     else
@@ -66,11 +64,10 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotFileNameSeekers
                 }
             }
 
-
             return false;
         }
 
-        public IPlotFileNameSeeker Validate()
+        public override IPlotProgressParser Validate()
         {
             if (!Filter.HasValue())
             {

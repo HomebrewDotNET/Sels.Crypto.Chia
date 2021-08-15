@@ -10,5 +10,7 @@
 - Reupload the repository
 - Redistribute the code (both digital/physical format)
 - Copy parts of the code and use it in other projects
-- Commercial use
-- Public use 
+- Commercial use of the code 
+- Public use of the code
+
+The above is applicable to the code itself and not any product created and released publically by the repository owner.

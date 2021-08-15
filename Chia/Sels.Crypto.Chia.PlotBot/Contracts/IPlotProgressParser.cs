@@ -6,10 +6,15 @@ using System.Text;
 namespace Sels.Crypto.Chia.PlotBot.Contracts
 {
     /// <summary>
-    /// Component responsible for extracting the plot file name from a plotting instance so plot bot knows which file is being/was created.
+    /// Component that extracts information from the progress file
     /// </summary>
-    public interface IPlotFileNameSeeker : IComponent<IPlotFileNameSeeker>
+    public interface IPlotProgressParser : IComponent<IPlotProgressParser>
     {
+        /// <summary>
+        /// Extension that uses when the plot is being moved.
+        /// </summary>
+        public string TransferExtension { get; set; }
+
         /// <summary>
         /// Tries to seek the file name of the plot that's being/was created.
         /// </summary>

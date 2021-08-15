@@ -14,6 +14,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// </summary>
         public bool Enabled { get; set; } = true;
         /// <summary>
+        /// How many hours before a plotting instance is considered timed out. This will cause Plot Bot to dispose the instance and raise an error.
+        /// </summary>
+        public int Timeout { get; set; }
+
+        /// <summary>
         /// Unique name to identifiy this plotter config.
         /// </summary>
         public string Alias { get; set; }
@@ -43,9 +48,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         public string PlotCommand { get; set; }
 
         /// <summary>
-        /// Component that searches for the plot file name when an instance is plotting.
+        /// Component that extracts information from the progress file.
         /// </summary>
-        public ComponentConfig PlotFileNameSeeker { get; set; }
+        public ComponentConfig PlotProgressParser { get; set; }
 
         /// <summary>
         /// Contains settings about which directories the plotter can use to plot.
@@ -64,12 +69,13 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         public static PlotterConfig Default => new PlotterConfig()
         {
             Alias = "MainPlotter",
-            PlotFileNameSeeker = new ComponentConfig()
+            PlotProgressParser = new ComponentConfig()
             {
-                Name = PlotBotConstants.Components.PlotFileNameSeeker.String,
+                Name = PlotBotConstants.Components.PlotProgressParser.String,
                 Arguments = new Dictionary<string, string>()
                 {
-                    { PlotBotConstants.Components.PlotFileNameSeeker.StringFilter, PlotBotConstants.Components.PlotFileNameSeeker.StringFilterArg }
+                    { PlotBotConstants.Components.PlotProgressParser.StringFilter, PlotBotConstants.Components.PlotProgressParser.StringFilterArg },
+                    { PlotBotConstants.Components.PlotProgressParser.StringTransferExtension, PlotBotConstants.Components.PlotProgressParser.StringTransferExtensionArg }
                 }
             },
             WorkingDirectories = PlotterWorkingConfig.Default,

@@ -21,10 +21,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         public const string UnknownPlotFileName = "Unknown" + PlotBotConstants.Plotting.PlotFileExtension;
 
         // Fields
+        private readonly Action<PlottingInstance> _disposeAction;
         private readonly Task _plottingTask;
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
         private readonly Action<PlottingInstance> _removeAction;
-        private readonly IPlotFileNameSeeker _plotFileNameSeeker;
+        private readonly IPlotProgressParser _plotProgressParser;
 
         // Properties
         /// <summary>
@@ -49,6 +50,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// </summary>
         public DateTime StartTime { get; set; }
         /// <summary>
+        /// Time when this instance is considered timed out.
+        /// </summary>
+        public DateTime? TimeoutDate { get; set; }
+        /// <summary>
         /// File containing the output of the plotting command.
         /// </summary>
         public FileInfo ProgressFile { get; }
@@ -59,31 +64,39 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// <summary>
         /// File name of the plot that was created. Returns <see cref="UnknownPlotFileName"/> when the seeker can't find the plot file name.
         /// </summary>
-        public string PlotFileName => _plotFileNameSeeker.TrySeekPlotFileName(this, out var fileName) ? fileName : UnknownPlotFileName;
+        public string PlotFileName => _plotProgressParser.TrySeekPlotFileName(this, out var fileName) ? fileName : UnknownPlotFileName;
+        /// <summary>
+        /// Extension of plot when it is being moved.
+        /// </summary>
+        public string MovingPlotExtension { get; }
 
         /// <summary>
         /// Indicates if this instance is still creating the plot.
         /// </summary>
         public bool IsPlotting => !_plottingTask.IsCompleted;
 
-        public PlottingInstance(int followNumber, IPlottingService plottingService, IPlotFileNameSeeker plotFileNameSeeker, string plotCommand, Plotter plotter, Drive drive, FileSize reservedDestinationSize, Action<PlottingInstance> registrationAction, Action<PlottingInstance> removeAction)
+        public PlottingInstance(int followNumber, IPlottingService plottingService, IPlotProgressParser plotFileNameSeeker, string plotCommand, int timeout, Plotter plotter, Drive drive, FileSize reservedDestinationSize, Action<PlottingInstance> disposeAction)
         {
             FollowNumber = followNumber;
             Plotter = plotter.ValidateArgument(nameof(plotter));
             Drive = drive.ValidateArgument(nameof(drive));
             ReservedDestinationSize = reservedDestinationSize.ValidateArgument(nameof(reservedDestinationSize));
-            _removeAction = removeAction.ValidateArgument(nameof(removeAction));
-            _plotFileNameSeeker = plotFileNameSeeker.ValidateArgument(nameof(plotFileNameSeeker));
+            _plotProgressParser = plotFileNameSeeker.ValidateArgument(nameof(plotFileNameSeeker));
             plottingService.ValidateArgument(nameof(plottingService));
-            
+            _disposeAction = disposeAction;
+            MovingPlotExtension = plotFileNameSeeker.TransferExtension.HasValue() ? plotFileNameSeeker.TransferExtension : PlotBotConstants.Plotting.PlotFileExtension;
+
             plotCommand.ValidateArgumentNotNullOrWhitespace(nameof(plotCommand));
-            registrationAction.ValidateArgument(nameof(registrationAction));
             ProgressFile = new FileInfo(Path.Combine(plotter.WorkingDirectory.Source.FullName, $"{Name}.txt"));
             ProgressFile.Write(string.Empty);
 
             StartTime = DateTime.Now;
+            if(timeout > 0)
+            {
+                TimeoutDate = DateTime.Now.AddHours(timeout);
+            }
+
             _plottingTask = Task.Run(() => plottingService.StartPlotting(plotCommand, ProgressFile, _tokenSource.Token));
-            registrationAction(this);
             LoggingServices.Log($"{Name} has started plotting");
         }
 
@@ -145,7 +158,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 if (stillRunning)
                 {
                     // Try find the plot in the destination directory and delete it
-                    var plot = new FileInfo(Path.Combine(Drive.Directory.Source.FullName, PlotFileName));
+                    var plot = new FileInfo(Path.Combine(Drive.Directory.Source.FullName, Path.GetFileNameWithoutExtension(PlotFileName) + MovingPlotExtension));
 
                     try
                     {                        
@@ -153,11 +166,28 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                         {
                             plot.Delete();
                         }
+                        else
+                        {
+                            LoggingServices.Debug($"Could not find plot {plot.FullName} so plotter was probably not moving the file");
+                        }
                     }
                     catch(Exception ex)
                     {
                         LoggingServices.Log(LogLevel.Warning, $"Could not delete incomplete plot file {plot.FullName}", ex);
                     }
+                }
+
+                // Execute dispose task if provided
+                try
+                {
+                    if (_disposeAction.HasValue())
+                    {
+                        _disposeAction(this);
+                    }
+                }
+                catch(Exception ex)
+                {
+                    LoggingServices.Log($"Something went wrong executing dispose action for {Name}", ex);
                 }
                 
                 // Archive progress file if enabled
