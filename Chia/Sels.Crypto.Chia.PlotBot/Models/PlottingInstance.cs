@@ -24,7 +24,6 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         private readonly Action<PlottingInstance> _disposeAction;
         private readonly Task _plottingTask;
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
-        private readonly Action<PlottingInstance> _removeAction;
         private readonly IPlotProgressParser _plotProgressParser;
 
         // Properties
@@ -206,7 +205,6 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             }
             finally
             {
-                _removeAction(this);
                 LoggingServices.Trace($"Disposed", this);
             }
         }
