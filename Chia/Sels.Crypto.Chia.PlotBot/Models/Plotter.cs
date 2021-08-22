@@ -138,7 +138,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             drive.ValidateArgument(nameof(drive));
 
-            return CanPlotNew && PlotterDelayers.All(x => x.CanStartInstance(this, drive)) && drive.CanBePlotted(PlotSize.FinalSize);
+            var canPlot = CanPlotNew && PlotterDelayers.All(x => x.CanStartInstance(this, drive)) && drive.CanBePlotted(PlotSize.FinalSize);
+
+            LoggingServices.Debug($"Plotter {Alias} {(canPlot ? "can" : "can't")} plot to Drive {drive.Alias}");
+
+            return canPlot;
         }
 
         /// <summary>
@@ -192,10 +196,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
             LoggingServices.Debug($"{Alias} creating cache directories to plot to {drive.Alias}");
             var caches = new List<DirectoryInfo>();
-            for(int i = 0; i < Caches.Length; i++)
+            var instanceSubDirectoryName = Guid.NewGuid().ToString();
+            for (int i = 0; i < Caches.Length; i++)
             {
                 var cacheDirectory = Caches[i].Source;
-                var instanceDirectory = cacheDirectory.CreateSubdirectory(Guid.NewGuid().ToString());
+                var instanceDirectory = cacheDirectory.CreateSubdirectory(instanceSubDirectoryName);
                 caches.Add(instanceDirectory);
                 parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", instanceDirectory);
             }
@@ -219,15 +224,16 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             RegisterInstance(instance);
             drive.RegisterInstance(instance);
 
-            LoggingServices.Log($"Plotter {Alias} has created an new instance with name {instance.Name} that will plot to {drive.Alias}");
+            LoggingServices.Debug($"Plotter {Alias} has created an new instance with name {instance.Name} that will plot to {drive.Alias}");
             return instance;
         }
 
         private void RegisterInstance(PlottingInstance plottingInstance)
         {
             using var logger = LoggingServices.TraceMethod(this);
-
             plottingInstance.ValidateArgument(nameof(plottingInstance));
+
+            LoggingServices.Debug($"Adding instance {plottingInstance} to Plotter {Alias}");
 
             _plottingInstances.Add(plottingInstance);
         }
@@ -235,14 +241,16 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         private void RemoveInstance(PlottingInstance plottingInstance)
         {
             using var logger = LoggingServices.TraceMethod(this);
-
             plottingInstance.ValidateArgument(nameof(plottingInstance));
+
+            LoggingServices.Debug($"Removing instance {plottingInstance} from Plotter {Alias}");
 
             _plottingInstances.Remove(plottingInstance);
         }
 
         public void Dispose()
         {
+            using var logger = LoggingServices.TraceMethod(this);
             // Stop all current instances
             Instances.ForceExecute(x => x.Dispose(), (x, ex) => LoggingServices.Log($"Error occured while disposing plotting instance {x.Name}", ex));
         }

@@ -14,7 +14,7 @@ using Sels.Core.Components.Logging;
 namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
 {
     /// <summary>
-    /// Seeker that uses a regex string to search for the word containing the plot name
+    /// Parser that uses a regex string to search for the word containing the plot name
     /// </summary>
     public class RegexPlotProgressParser : BasePlotProgressParser
     {
@@ -46,7 +46,8 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
                     // Append extension if it's missing
                     if (!matchedFileName.EndsWith(PlotBotConstants.Plotting.PlotFileExtension))
                     {
-                        matchedFileName += PlotBotConstants.Plotting.PlotFileExtension;
+                        LoggingServices.Debug($"Regex match {matchedFileName} did not end with {PlotBotConstants.Plotting.PlotFileExtension}. Adding it");
+                        matchedFileName += PlotBotConstants.Plotting.PlotFileExtension;                        
                     }
 
                     matchedFileName = Path.GetFileName(matchedFileName);
@@ -59,7 +60,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
                     }
                     else
                     {
-                        LoggingServices.Debug($"Found plot file name {plotFileName} was not a valid file name");
+                        LoggingServices.Debug($"Found plot file name {plotFileName} but was not a valid file name");
                     }
                 }
             }
@@ -69,6 +70,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
 
         public override IPlotProgressParser Validate()
         {
+            using var logger = LoggingServices.TraceMethod(this);
             if (!Filter.HasValue())
             {
                 throw new PlotBotMisconfiguredException($"{nameof(Filter)} cannot be null, empty or whitespace");

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Sels.Core.Components.FileSizes.Byte.Binary;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -16,6 +17,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Logging
         {
+            public static Type DefaultLoggingFileSize = typeof(GibiByte); 
             public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}. ${exception}";
             public const string FullLayout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}: ${newline}${exception:format=ToString}";
             public const string MailSubjectLayout = ServiceName + " ${machinename} ${level:uppercase=true}";
@@ -30,6 +32,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
             public static class Targets
             {
+                public const string PlotBotDebug = "PlotBot_Debug";
                 public const string PlotBotAll = "PlotBot_All";
                 public const string PlotBotError = "PlotBot_Error";
                 public const string PlotBotCritical = "PlotBot_Critical";
@@ -101,17 +104,17 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string StringFilter = "Filter";
                 public const string StringFilterArg = "plot-";
                 public const string StringTransferExtension = "TransferExtension";
-                public const string StringTransferExtensionArg = ".tmp";
+                public const string StringTransferExtensionArg = ".plot.tmp";
 
                 public const string Regex = "Regex";
 
                 public const string MadMax = "MadMax";
                 public const string MadMaxFilterArg = "plot-";               
-                public const string MadMaxTransferExtensionArg = ".tmp";
+                public const string MadMaxTransferExtensionArg = ".plot.tmp";
 
                 public const string Chia = "Chia";
                 public const string ChiaFilterArg = ".plot";
-                public const string ChiaTransferExtensionArg = ".tmp";
+                public const string ChiaTransferExtensionArg = ".plot.tmp";
             }
 
             public static class Clearer

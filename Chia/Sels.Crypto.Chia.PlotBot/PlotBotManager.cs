@@ -51,11 +51,6 @@ namespace Sels.Crypto.Chia.PlotBot
 
             SetupLogging(factory.CreateLogger(PlotBotConstants.LoggerName));
             LoadServiceConfig(configProvider.ValidateArgument(nameof(configProvider)));
-
-            // Dispose plot bot when app closes
-            Helper.App.RegisterApplicationClosingAction(() => {
-                if (_plotBot.HasValue()) _plotBot.Dispose();
-            });
         }
 
         protected void SetupLogging(ILogger logger)
@@ -79,21 +74,21 @@ namespace Sels.Crypto.Chia.PlotBot
         protected bool Initialize()
         {
             using var logger = LoggingServices.TraceMethod(this);
-            LoggingServices.Log($"{PlotBotConstants.ServiceName} is starting up for the first time. Initializing.");
+            LoggingServices.Log($"{PlotBotConstants.ServiceName} is starting up for the first time. Initializing");
 
             if (PlotBotConfigFile.Exists)
             {
                 LoggingServices.Log($"{PlotBotConstants.ServiceName} found configuration file <{PlotBotConfigFile.FullName}>");
                 var plotBotConfigFile = LoadPlotBotConfig();
 
-                LoggingServices.Log($"Configuration file <{PlotBotConfigFile.FullName}> is valid.");
+                LoggingServices.Log($"Configuration file <{PlotBotConfigFile.FullName}> is valid");
                 _plotBot.ReloadConfig(plotBotConfigFile);
 
                 return true;
             }
             else
             {
-                LoggingServices.Log($"Configuration file <{PlotBotConfigFile.FullName}> does not exist. Creating file with template.");
+                LoggingServices.Log($"Configuration file <{PlotBotConfigFile.FullName}> does not exist. Creating file with template");
                 var defaultConfig = PlotBotConfig.Default;
                 PlotBotConfigFile.Create(defaultConfig.SerializeAsJson(Newtonsoft.Json.Formatting.Indented));
 
@@ -105,7 +100,7 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            using (LoggingServices.CreateTimedLogger(LogLevel.Debug, () => $"{PlotBotConstants.ServiceName} started processing", x => $"{PlotBotConstants.ServiceName} finished processing in {x.PrintTotalMs()}"))
+            using (LoggingServices.TraceAction(LogLevel.Debug, $"{PlotBotConstants.ServiceName} started processing", x => $"{PlotBotConstants.ServiceName} finished processing in {x.PrintTotalMs()}"))
             {
                 if (DoesConfigNeedToBeReloaded())
                 {
@@ -133,8 +128,7 @@ namespace Sels.Crypto.Chia.PlotBot
                     }
                 }
 
-                LoggingServices.Log($"{PlotBotConstants.ServiceName} plotting");
-                var result = _plotBot.Plot();
+                var result = _plotBot.Plot(stoppingToken);
 
                 result.CreatedPlots.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} created {x}"));
 
@@ -144,6 +138,10 @@ namespace Sels.Crypto.Chia.PlotBot
                 }
 
                 result.StartedInstances.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} started instance {x}"));
+
+                result.RunningInstances.Execute(x => LoggingServices.Log($"Instance {x.Name} is creating {x.PlotName} of size {x.PlotSize} and has been running for {x.StartTime.GetMinuteDifference()} minutes{(x.TimeoutDate.HasValue() ? $" and will timeout in {x.TimeoutDate.Value.GetMinuteDifference()} minutes": "")}"));
+
+                if (!result.StartedInstances.HasValue() && !result.RunningInstances.HasValue()) LoggingServices.Log($"{PlotBotConstants.ServiceName} is idle");
             }
         }
 
@@ -155,7 +153,7 @@ namespace Sels.Crypto.Chia.PlotBot
             LoggingServices.Log($"{PlotBotConstants.ServiceName} is reading the configuration file");
             var configFileContent = PlotBotConfigFile.Read();
             var config = configFileContent.DeserializeFromJson<PlotBotConfig>();
-            LoggingServices.Log($"{PlotBotConstants.ServiceName} read configuration. Started validating configuration.");
+            LoggingServices.Log($"{PlotBotConstants.ServiceName} read configuration. Started validating configuration");
             var errors = _configValidator.Validate(config);
 
             using(LoggingServices.TraceAction(LogLevel.Debug, "Generating config file hash"))
@@ -169,6 +167,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
         private bool DoesConfigNeedToBeReloaded()
         {
+            using var logger = LoggingServices.TraceMethod(this);
             var configFileContent = PlotBotConfigFile.Read();
             string hash;
 
@@ -181,11 +180,11 @@ namespace Sels.Crypto.Chia.PlotBot
 
             if (_configHash.Equals(hash))
             {
-                LoggingServices.Log(LogLevel.Debug, $"Newly generated hash <{hash}> is the same as the old hash <{_configHash}> so no changes detected.");
+                LoggingServices.Log(LogLevel.Debug, $"Newly generated hash <{hash}> is the same as the old hash <{_configHash}> so no changes detected");
             }
             else
             {
-                LoggingServices.Log(LogLevel.Debug, $"Newly generated hash <{hash}> is not the same as the old hash <{_configHash}>, requesting config reload.");
+                LoggingServices.Log(LogLevel.Debug, $"Newly generated hash <{hash}> is not the same as the old hash <{_configHash}>, requesting config reload");
 
                 return true;
             }
@@ -195,11 +194,12 @@ namespace Sels.Crypto.Chia.PlotBot
 
         private bool CanConfigBeSafelyReloaded(PlotBotConfig newConfig)
         {
+            using var logger = LoggingServices.TraceMethod(this);
             var missingPlotters = _plotBot.Plotters.Where(x => !newConfig.Plotters.Select(p => p.Alias).Contains(x.Alias)).ToArray();
              
             if(missingPlotters.HasValue())
             {
-                LoggingServices.Log($"Plotters {missingPlotters.JoinString(", ")} were missing in the new config.");
+                LoggingServices.Log($"Plotters {missingPlotters.JoinString(", ")} were missing in the new config");
 
                 return false;
             }
@@ -209,9 +209,10 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            try
+            using var logger = LoggingServices.TraceMethod(this);
+            return Task.Run(() =>
             {
-                return Task.Run(() =>
+                try
                 {
                     if (Initialize())
                     {
@@ -225,33 +226,37 @@ namespace Sels.Crypto.Chia.PlotBot
                     {
                         LoggingServices.Log($"{PlotBotConstants.ServiceName} could not be properly initialized. Service will stop. This is normal when running the service for the first time.");
                     }
-                });
-            }
-            catch (Exception ex)
-            {
-                LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} could not properly start up", ex);
+                }
+                catch (Exception ex)
+                {
+                    LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} could not properly start up", ex);
 
-                throw;
-            }
+                    throw;
+                }
+            });
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            try
+            using var logger = LoggingServices.TraceMethod(this);
+            return Task.Run(() =>
             {
-                return Task.Run(() =>
+                try
                 {
-                    _actionManager.StopAndWaitAll();
+                    using(LoggingServices.TraceAction($"Shutting down {PlotBotConstants.ServiceName}", x => $"Shut down {PlotBotConstants.ServiceName} in {x.PrintTotalMs()}"))
+                    {
+                        _actionManager.StopAndWaitAll();
 
-                    _plotBot.TryDispose(x => LoggingServices.Log($"Plot Bot could not be properly disposed", x));
-                });
-            }
-            catch (Exception ex)
-            {
-                LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} could not properly shutdown", ex);
+                        _plotBot.TryDispose(x => LoggingServices.Log($"Plot Bot could not be properly disposed", x));
+                    }                   
+                }
+                catch (Exception ex)
+                {
+                    LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} could not properly shutdown", ex);
 
-                throw;
-            }            
+                    throw;
+                }
+            });
         }
     }
 

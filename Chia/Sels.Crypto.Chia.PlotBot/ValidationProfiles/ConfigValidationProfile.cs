@@ -10,6 +10,7 @@ using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Core.Contracts.Configuration;
 using Sels.Core;
 using Sels.Core.Contracts.Factory;
+using Sels.Core.Components.Logging;
 
 namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
 {
@@ -71,6 +72,7 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
 
         public IEnumerable<string> Validate(PlotBotConfig config)
         {
+            using var logger = LoggingServices.TraceMethod(this);
             return ObjectValidator.Validate(this, config, typeof(PlotBotConfig));
         }
     }

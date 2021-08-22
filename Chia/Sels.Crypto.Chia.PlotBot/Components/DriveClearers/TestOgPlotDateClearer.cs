@@ -20,7 +20,10 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
             drive.ValidateArgument(nameof(drive));
             requiredSize.ValidateArgument(nameof(requiredSize));
 
+            var freeSpace = drive.AvailableFreeSize;
             FileSize deletedSize = new SingleByte(0);
+
+            LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize<GibiByte>()} free");
 
             foreach (var clearableFile in GetClearableFiles(drive, requiredSize))
             {
@@ -30,18 +33,15 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 
                 deletedSize += fileSize;
 
-                if (deletedSize >= requiredSize)
+                if (deletedSize + freeSpace >= requiredSize)
                 {
-                    break;
-                }              
+                    LoggingServices.Log($"Test Mode: Would have freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
+
+                    return true;
+                }
             }
 
-            if (deletedSize.ByteSize > 0)
-            {
-                LoggingServices.Log($"Test Mode: Would have freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
-            }
-
-            return deletedSize >= requiredSize;
+            return false;
         }
     }
 }
