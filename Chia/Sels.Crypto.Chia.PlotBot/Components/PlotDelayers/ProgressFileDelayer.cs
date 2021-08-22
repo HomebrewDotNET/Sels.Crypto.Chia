@@ -32,7 +32,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
 
         public bool CanStartInstance(Plotter plotter, Drive drive)
         {
-            using var loggers = LoggingServices.TraceMethod(this);
+            using var logger = LoggingServices.TraceMethod(this);
 
             plotter.ValidateArgument(nameof(plotter));
             drive.ValidateArgument(nameof(drive));
@@ -43,6 +43,8 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
             {
                 var lastStartedInstance = plotter.Instances.OrderByDescending(x => x.StartTime).First();
                 var fileContent = lastStartedInstance.ProgressFile.Read();
+
+                LoggingServices.Debug($"Instance {lastStartedInstance.Name} started last on {lastStartedInstance.StartTime}");
 
                 if (IsRegex)
                 {
@@ -69,6 +71,8 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
 
         public IPlotterDelayer Validate()
         {
+            using var logger = LoggingServices.TraceMethod(this);
+
             if (!Filter.HasValue())
             {
                 throw new PlotBotMisconfiguredException($"{nameof(Filter)} cannot be null, empty or whitespace");

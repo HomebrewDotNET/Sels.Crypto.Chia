@@ -8,6 +8,6 @@ namespace Sels.Crypto.Chia.PlotBot.Contracts
 {
     public interface IPlottingService
     {
-        void StartPlotting(string plotCommand, FileInfo progressFile, CancellationToken cancellationToken = default);
+        void StartPlotting(string plotCommand, FileInfo progressFile, CancellationToken cancellationToken);
     }
 }

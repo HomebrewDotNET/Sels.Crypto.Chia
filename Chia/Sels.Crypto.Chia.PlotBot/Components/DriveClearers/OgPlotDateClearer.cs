@@ -39,7 +39,10 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
             drive.ValidateArgument(nameof(drive));
             requiredSize.ValidateArgument(nameof(requiredSize));
 
+            var freeSpace = drive.AvailableFreeSize;
             FileSize deletedSize = new SingleByte(0);
+
+            LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize<GibiByte>()} free");
 
             foreach(var clearableFile in GetClearableFiles(drive, requiredSize))
             {
@@ -49,18 +52,15 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
                 clearableFile.Delete();
                 deletedSize += fileSize;
 
-                if(deletedSize >= requiredSize)
+                if(deletedSize+freeSpace >= requiredSize)
                 {
-                    break;
+                    LoggingServices.Log($"Freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
+
+                    return true;
                 }
             }
-
-            if(deletedSize.ByteSize > 0)
-            {
-                LoggingServices.Log($"Freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
-            }
-
-            return deletedSize >= requiredSize;
+           
+            return false;
         }
 
         public IEnumerable<FileInfo> GetClearableFiles(Drive drive, FileSize requiredSize)
@@ -77,14 +77,23 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
                 {
                     var datePart = plot.Name.Substring(StartIndex, DateLength);
 
-                    if (DateTime.TryParseExact(datePart, DateTimeFormat, null, DateTimeStyles.None, out var date) && date < ThresHold)
+                    LoggingServices.Debug($"Extracted date section {datePart} from plot {plot.FullName}");
+
+                    if (DateTime.TryParseExact(datePart, DateTimeFormat, null, DateTimeStyles.None, out var date))
                     {
-                        LoggingServices.Log(LogLevel.Debug, $"Plot {plot.FullName} was created on {date} and passed the threshold date of {ThresHold}");
-                        yield return plot;
+                        if(date < ThresHold)
+                        {
+                            LoggingServices.Debug($"Plot {plot.FullName} was created on {date} and passed the threshold date of {ThresHold}");
+                            yield return plot;
+                        }
+                        else
+                        {
+                            LoggingServices.Debug($"Plot {plot.FullName} was created on {date} and did not pass the threshold date of {ThresHold}");
+                        }                       
                     }
                     else
                     {
-                        LoggingServices.Log(LogLevel.Debug, $"Plot {plot.FullName} was created on {date} and did not pass the threshold date of {ThresHold}");
+                        LoggingServices.Debug($"Could not convert date section from Plot {plot.FullName}");
                     }
                 }
             }
@@ -92,6 +101,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 
         public IDriveSpaceClearer Validate()
         {
+            using var logger = LoggingServices.TraceMethod(this);
             return this;
         }
     }

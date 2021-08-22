@@ -28,7 +28,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
 
         public bool CanStartInstance(Plotter plotter, Drive drive)
         {
-            using var loggers = LoggingServices.TraceMethod(this);
+            using var logger = LoggingServices.TraceMethod(this);
 
             plotter.ValidateArgument(nameof(plotter));
             drive.ValidateArgument(nameof(drive));
@@ -39,6 +39,8 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
             {
                 var lastRunningInstance = plotter.Instances.OrderByDescending(x => x.StartTime).First();
                 var allowedTimeToRun = DateTime.Now.AddMinutes(MinuteDelay.ToNegative());
+
+                LoggingServices.Debug($"Instance {lastRunningInstance.Name} started last on {lastRunningInstance.StartTime}");
 
                 allowedToPlot =  allowedTimeToRun > lastRunningInstance.StartTime;
 
@@ -53,6 +55,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotDelayers
 
         public IPlotterDelayer Validate()
         {
+            using var logger = LoggingServices.TraceMethod(this);
             return this;
         }
     }

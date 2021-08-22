@@ -47,17 +47,26 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static void Main(string[] args)
         {
-            // Set appsetting directory
-            if(args.Length > 0)
+            try
             {
-                Directory.SetCurrentDirectory(args[0]);
+                NLog.LogManager.AutoShutdown = false;
+                // Set appsetting directory
+                if (args.Length > 0)
+                {
+                    Directory.SetCurrentDirectory(args[0]);
+                }
+                else
+                {
+                    Helper.App.SetCurrentDirectoryToExecutingAssembly();
+                }
+
+                CreateHostBuilder(args).Build().Run();
             }
-            else
+            finally
             {
-                Helper.App.SetCurrentDirectoryToExecutingAssembly();
+                NLog.LogManager.Shutdown();
             }
             
-            CreateHostBuilder(args).Build().Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -141,6 +150,7 @@ namespace Sels.Crypto.Chia.PlotBot
             var logDirectory = configProvider.GetSectionSetting(PlotBotConstants.Config.LogSettings.LogDirectory, nameof(PlotBotConstants.Config.LogSettings), true, x => x.HasValue() && Directory.Exists(x), x => $"Directory cannot be empty and Directory must exist on the file system. Was <{x}>");
             var archiveSize = configProvider.GetSectionSetting<long>(PlotBotConstants.Config.LogSettings.ArchiveSize, nameof(PlotBotConstants.Config.LogSettings), true, x => x > 1, x => $"File size cannot be empty and file size must be above 1 {MegaByte.FileSizeAbbreviation}");
             var archiveFileSize = FileSize.CreateFromSize<MegaByte>(archiveSize);
+            var isDebug = minLogLevel <= LogLevel.Debug;
 
             // Logging config
             var mailingEnabled = configProvider.IsSectionDefined(nameof(PlotBotConstants.Config.LogSettings), nameof(PlotBotConstants.Config.LogSettings.Mail));
@@ -185,6 +195,7 @@ namespace Sels.Crypto.Chia.PlotBot
             var config = new LoggingConfiguration();
 
             // Create targets
+            if(isDebug) config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotDebug, logDirectoryInfo, archiveFileSize));
             config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotAll, logDirectoryInfo, archiveFileSize));
             config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotError, logDirectoryInfo, archiveFileSize, PlotBotConstants.Logging.FullLayout));
             config.AddTarget(CreateLogFileTarget(PlotBotConstants.Logging.Targets.PlotBotCritical, logDirectoryInfo, archiveFileSize, PlotBotConstants.Logging.FullLayout));
@@ -193,8 +204,10 @@ namespace Sels.Crypto.Chia.PlotBot
             var nlogMinLevel = NLog.LogLevel.FromOrdinal(minLogLevelOrdinal);
             // Skip microsoft logs
             config.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Info, new NullTarget(), PlotBotConstants.Logging.Categories.Microsoft, true);
+            // Debug logs
+            if(isDebug) config.AddRule(nlogMinLevel, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotDebug);
             // All logs
-            config.AddRule(nlogMinLevel, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotAll);
+            config.AddRule(isDebug ? NLog.LogLevel.Info : nlogMinLevel, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotAll);
             // All errors
             config.AddRule(minLogLevelOrdinal >= NLog.LogLevel.Warn.Ordinal ? nlogMinLevel : NLog.LogLevel.Warn, NLog.LogLevel.Fatal, PlotBotConstants.Logging.Targets.PlotBotError);
             // Fatal errors only

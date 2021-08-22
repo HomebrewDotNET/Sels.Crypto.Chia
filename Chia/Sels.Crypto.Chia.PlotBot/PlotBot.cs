@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using Sels.Core.Contracts.Conversion;
 using Sels.Core.Templates.FileSystem;
 using System.IO;
+using System.Threading;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -51,10 +52,12 @@ namespace Sels.Crypto.Chia.PlotBot
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
         }
 
-        public PlotBotResult Plot()
+        public PlotBotResult Plot(CancellationToken token = default)
         {
             using var logger = LoggingServices.TraceMethod(this);
             var result = new PlotBotResult();
+
+            if (token.IsCancellationRequested) return result;
 
             // Handle completed
             using (LoggingServices.TraceAction(LogLevel.Debug, "Handling plotting results"))
@@ -69,14 +72,19 @@ namespace Sels.Crypto.Chia.PlotBot
                 result.CreatedPlots = createdPlots.ToArray();
             }
 
+            if (token.IsCancellationRequested) return result;
+
             // Handle instances in timeout
             using (LoggingServices.TraceAction(LogLevel.Debug, "Handle timeouts"))
             {
                 var timedOutPlotters = Plotters.SelectMany(x => x.Instances).Where(x => x.IsPlotting && x.TimeoutDate.HasValue() && x.TimeoutDate < DateTime.Now);
                 timedOutPlotters.ForceExecute(x => {
-                    LoggingServices.Trace(LogLevel.Error, $"Plotting instance {x.Name} could not create a plot within the configured timeout period of {x.Plotter.Timeout} hours. Plot command output:", x.ProgressFile.Read());
-                }, (x, ex) => { LoggingServices.Log($"Something went wrong disposing instance {x.Name} that timed out", ex); x.Dispose(); });
+                    LoggingServices.TraceObject(LogLevel.Error, $"Plotting instance {x.Name} could not create a plot within the configured timeout period of {x.Plotter.Timeout} hours. Plot command output:", x.ProgressFile.Read());
+                    x.Dispose();
+                }, (x, ex) => { LoggingServices.Log($"Something went wrong disposing instance {x.Name} that timed out", ex); });
             }
+
+            if (token.IsCancellationRequested) return result;
 
             // Delete completed plotters
             using (LoggingServices.TraceAction(LogLevel.Debug, "Delete completed plotters"))
@@ -86,6 +94,17 @@ namespace Sels.Crypto.Chia.PlotBot
                 result.DeletedPlotters = deletablePlotters.Count();
             }
 
+            if (token.IsCancellationRequested) return result;
+
+            // Get info on running instances
+            using (LoggingServices.TraceAction(LogLevel.Debug, "Get info running instances"))
+            {
+                result.RunningInstances = Plotters.SelectMany(x => x.Instances).Where(x => x.IsPlotting).Select(x => new PlotBotInstance(x)).ToArray();                
+            }
+
+            if (token.IsCancellationRequested) return result;
+
+            // Start up new instances
             if (CanStartNewInstances)
             {
                 var startedInstances = new List<string>();
@@ -97,7 +116,9 @@ namespace Sels.Crypto.Chia.PlotBot
                     {
                         foreach (var drive in Drives.OrderByDescending(x => x.HasEnoughSpaceFor(plotter.PlotSize.FinalSize)).ThenBy(x => x.Priority))
                         {
-                            while (plotter.CanPlotToDrive(drive))
+                            if (token.IsCancellationRequested) return result;
+
+                            while (!token.IsCancellationRequested && plotter.CanPlotToDrive(drive))
                             {
                                 startedInstances.Add(plotter.PlotToDrive(drive).Name);
                             }
@@ -105,12 +126,16 @@ namespace Sels.Crypto.Chia.PlotBot
                             if (!plotter.CanPlotNew)
                             {
                                 break;
-                            }
+                            }                            
                         }                        
                     }
                 }
 
                 result.StartedInstances = startedInstances.ToArray();
+            }
+            else
+            {
+                LoggingServices.Debug($"{PlotBotConstants.LoggerName} not allowed to start new instances");
             }
 
             return result;
@@ -238,8 +263,25 @@ namespace Sels.Crypto.Chia.PlotBot
     {
         public string[] CreatedPlots { get; set; } = new string[0];
         public string[] StartedInstances { get; set; } = new string[0];
+        public PlotBotInstance[] RunningInstances { get; set; } = new PlotBotInstance[0];
         public int DeletedPlotters { get; set; }
     }
 
+    public class PlotBotInstance
+    {
+        public string Name { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime? TimeoutDate { get; set; }
+        public string PlotName { get; set; }
+        public GibiByte PlotSize { get; set; }
 
+        internal PlotBotInstance(PlottingInstance instance)
+        {
+            Name = instance.Name;
+            StartTime = instance.StartTime;
+            TimeoutDate = instance.TimeoutDate;
+            PlotName = instance.PlotFileName;
+            PlotSize = instance.ReservedDestinationSize.ToSize<GibiByte>();
+        }
+    }
 }

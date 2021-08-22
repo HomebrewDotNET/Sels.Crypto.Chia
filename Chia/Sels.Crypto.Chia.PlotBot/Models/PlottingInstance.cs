@@ -96,7 +96,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             }
 
             _plottingTask = Task.Run(() => plottingService.StartPlotting(plotCommand, ProgressFile, _tokenSource.Token));
-            LoggingServices.Log($"{Name} has started plotting");
+            LoggingServices.Debug($"{Name} has started plotting");
         }
 
         /// <summary>
@@ -121,13 +121,16 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            LoggingServices.Log($"Canceling plotting instance {Name}");
-            _tokenSource.Cancel();
-
-            while (IsPlotting)
+            using (LoggingServices.TraceAction($"Cancelling plotting instance {Name}", x => $"Cancelled plotting instance {Name} in {x.PrintTotalMs()}"))
             {
-                Thread.Sleep(250);
-            }
+                _tokenSource.Cancel();
+
+                while (IsPlotting)
+                {
+                    LoggingServices.Debug($"Cancelled Instance {Name} waiting for task to finish");
+                    Thread.Sleep(250);
+                }
+            }           
         }
 
         public void Dispose()
@@ -138,24 +141,39 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             {
                 var stillRunning = IsPlotting;
 
+                LoggingServices.Debug($"Instance {Name} was {(stillRunning ? "still running" : "not running")}");
+
                 // Cancel running task
                 try
                 {
-                    if (stillRunning)
+                    
+                    // Get result from task
+                    try
                     {
-                        Cancel();
+                        if (stillRunning)
+                        {
+                            LoggingServices.Debug($"Cancelling task for instance {Name}");
+                            Cancel();
+                            GetResult();
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        LoggingServices.Log(LogLevel.Warning, $"Error occured when cancelling running task", ex);
                     }
 
+                    LoggingServices.Debug($"Disposing task for instance {Name}");
                     _plottingTask.TryDispose(x => LoggingServices.Log(LogLevel.Warning, $"Plotting instance {Name} could not be properly dispose of it's task", x));
                 }
                 catch(TaskCanceledException taskEx)
                 {
-                    LoggingServices.Log(LogLevel.Warning, $"Plotting instance {Name} was canceled", taskEx);
+                    LoggingServices.Log(LogLevel.Warning, $"Plotting instance {Name} was cancelled", taskEx);
                 }
 
                 // If the task was still running the plot was either not created yet or not fully copied
                 if (stillRunning)
                 {
+                    LoggingServices.Debug($"Deleting moving plot for instance {Name} if it exists");
                     // Try find the plot in the destination directory and delete it
                     var plot = new FileInfo(Path.Combine(Drive.Directory.Source.FullName, Path.GetFileNameWithoutExtension(PlotFileName) + MovingPlotExtension));
 
@@ -164,6 +182,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                         if (plot.Exists)
                         {
                             plot.Delete();
+                            LoggingServices.Log($"Deleted incomplete plot {plot.FullName}");
                         }
                         else
                         {
@@ -179,6 +198,8 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 // Execute dispose task if provided
                 try
                 {
+                    LoggingServices.Debug($"Calling dispose action for instance {Name} if it exists");
+
                     if (_disposeAction.HasValue())
                     {
                         _disposeAction(this);
@@ -186,26 +207,44 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 }
                 catch(Exception ex)
                 {
-                    LoggingServices.Log($"Something went wrong executing dispose action for {Name}", ex);
+                    LoggingServices.Log($"Something went wrong executing dispose action for instance {Name}", ex);
                 }
-                
-                // Archive progress file if enabled
-                if (Plotter.ArchiveProgressFiles)
+
+                try
                 {
-                    var archiveDirectory = new DirectoryInfo(Path.Combine(ProgressFile.DirectoryName, ArchiveFolderName));
-                    archiveDirectory.CreateIfNotExist();
+                    // Archive progress file if enabled
+                    if (Plotter.ArchiveProgressFiles)
+                    {
+                        LoggingServices.Debug($"Archiving progress file for instance {Name}");
 
-                    var fileName = $"{ProgressFile.GetNameWithoutExtension()}_{DateTime.Now.ToString("dd-MM-yyyy_hh-mm-ss")}{ProgressFile.Extension}";
+                        var archiveDirectory = new DirectoryInfo(Path.Combine(ProgressFile.DirectoryName, ArchiveFolderName));
+                        archiveDirectory.CreateIfNotExist();
 
-                    ProgressFile.CopyTo(archiveDirectory, fileName);
+                        var fileName = $"{ProgressFile.GetNameWithoutExtension()}_{DateTime.Now.ToString("dd-MM-yyyy_hh-mm-ss")}{ProgressFile.Extension}";
+
+                        ProgressFile.CopyTo(archiveDirectory, fileName);
+                    }
+                }
+                catch(Exception ex)
+                {
+                    LoggingServices.Log($"Could not archive progress file {ProgressFile.FullName} for instance {Name}", ex);
                 }
 
-                // Cleanup ProgressFile
-                ProgressFile.Delete();
+                try
+                {
+                    LoggingServices.Debug($"Deleting progress file for instance {Name}");
+
+                    // Cleanup ProgressFile
+                    ProgressFile.Delete();
+                }
+                catch (Exception ex)
+                {
+                    LoggingServices.Log($"Could not delete progress file {ProgressFile.FullName} for instance {Name}", ex);
+                }              
             }
             finally
             {
-                LoggingServices.Trace($"Disposed", this);
+                LoggingServices.TraceObject($"Disposed", this);
             }
         }
     }

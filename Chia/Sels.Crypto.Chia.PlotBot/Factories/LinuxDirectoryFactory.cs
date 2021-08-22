@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Text;
 using Sels.Core.Extensions.Conversion;
 using Sels.Core.Templates.FileSystem;
+using Sels.Core.Components.Logging;
+using Sels.Core.Extensions;
 
 namespace Sels.Crypto.Chia.PlotBot.Factories
 {
@@ -13,6 +15,8 @@ namespace Sels.Crypto.Chia.PlotBot.Factories
     {
         protected override TInstance CreateNewInstance<TInstance>(params object[] arguments)
         {
+            using var logger = LoggingServices.TraceMethod(this);
+            LoggingServices.Trace($"Creating new instance of {typeof(TInstance)} using {(arguments.HasValue() ? arguments.JoinString(";") : "no arguments")}");
             return base.CreateNewInstance<LinuxDirectory>(arguments).As<TInstance>();
         }
     }

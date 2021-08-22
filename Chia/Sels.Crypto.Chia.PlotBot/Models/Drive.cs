@@ -59,7 +59,21 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// <returns>True if this drive can fit <paramref name="size"/></returns>
         public bool HasEnoughSpaceFor(FileSize size)
         {
-           return AvailableFreeSize > size;
+            using var logger = LoggingServices.TraceMethod(this);
+
+            var freeSize = AvailableFreeSize;
+            var enoughSpace = freeSize > size;
+
+            if (!enoughSpace)
+            {
+                LoggingServices.Trace($"Drive {Alias} does not have enough free disk space for {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}. Only has {freeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}");
+            }
+            else
+            {
+                LoggingServices.Trace($"Drive {Alias} has {freeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} free disk space which is enough for {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}");
+            }
+
+            return enoughSpace;
         }
 
         /// <summary>
@@ -69,10 +83,15 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// <returns>True if enough free space is available</returns>
         public bool CanBePlotted(FileSize size)
         {
-            var enoughSpace = AvailableFreeSize > size;
+            using var logger = LoggingServices.TraceMethod(this);
+            var freeSize = AvailableFreeSize;
+            var enoughSpace = freeSize > size;
+
+            LoggingServices.Trace($"Drive {Alias} has {freeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} of free space");
 
             if (!enoughSpace && DriveClearers.HasValue())
             {
+                LoggingServices.Debug($"Drive {Alias} does not enough free disk space for {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}. Trying to clear disk space with drive clearers");
                 if(DriveClearers.Any(x => x.ClearSpace(this, size)))
                 {
                     LoggingServices.Log($"Drive {Alias} has cleared extra space");
@@ -82,7 +101,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
             if (!enoughSpace)
             {
-                LoggingServices.Log(LogLevel.Debug, $"Drive {Alias} does not have enough free size available. Needs {size.ToSize<GibiByte>()} but only has {AvailableFreeSize.ToSize<GibiByte>()}");
+                LoggingServices.Log(LogLevel.Debug, $"Drive {Alias} does not have enough free size available. Needs {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} but only has {AvailableFreeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}");
             }
 
             return enoughSpace;
@@ -91,8 +110,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         internal void RegisterInstance(PlottingInstance plottingInstance)
         {
             using var logger = LoggingServices.TraceMethod(this);
-
             plottingInstance.ValidateArgument(nameof(plottingInstance));
+
+            LoggingServices.Debug($"Adding instance {plottingInstance} to Drive {Alias}");
 
             _plottingInstances.Add(plottingInstance);
         }
@@ -100,8 +120,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         internal void RemoveInstance(PlottingInstance plottingInstance)
         {
             using var logger = LoggingServices.TraceMethod(this);
-
             plottingInstance.ValidateArgument(nameof(plottingInstance));
+
+            LoggingServices.Debug($"Removing instance {plottingInstance} from Drive {Alias}");
 
             _plottingInstances.Remove(plottingInstance);
         }
