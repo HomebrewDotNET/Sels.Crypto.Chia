@@ -1,5 +1,5 @@
-# Sels.Crypto
-This repository is meant to house current/future projects that are related to Crypto mining/farming
+# Sels.Crypto.Chia
+This repository is meant to house current/future projects that are related to farming the crypto Chia.
 
 ## Projects for the Chia Blockchain (XCH)
 These are my current projects for helping with plotting and farming on the Chia Blockchain
@@ -10,7 +10,7 @@ The service is capable of automatically executing user defined plotting commands
 
 #### Features
 * Single json configuration file that can be modified without having to restart the service so no plotting effort is lost
-* Dynamic plotting commands that use parameters that Plot Bot will fill out so maximum efficiency can be achieved without sacrificing customizability. (Works with official plotter, MadMax plotter, custom bash scripts, ...)
+* Dynamic plotting commands that make use of parameters that Plot Bot will fill out so maximum efficiency can be achieved without sacrificing customizability. (Works with official plotter, MadMax plotter, custom bash scripts, ...)
 * Custom user defined plot sizes (K32, K33) so no service update is needed when we have to update the plot size
 * Dynamic components for customizing the behaviour of Plot Bot
 	* Plot delay components that tell Plot Bot when to start a new instance for a Plotter for maximum efficiency (Wait 30 minutes before starting a new instance, wait for previous instance to finish Phase 1, ...)
