@@ -24,11 +24,11 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
         private const string PlotFilter = "*.plot";
         private const int StartIndex = 9;
         private const int DateLength = 16;
-        private const string DateTimeFormat = "yyyy-MM-dd-hh-mm";
+        private const string DateTimeFormat = "yyyy-MM-dd-HH-mm";
 
         // Properties
         /// <summary>
-        /// Plots oldeer than this can be deleted.
+        /// Plots older than this date can be deleted.
         /// </summary>
         public DateTime ThresHold { get; set; }
 
@@ -103,6 +103,40 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
         {
             using var logger = LoggingServices.TraceMethod(this);
             return this;
+        }
+    }
+
+    public class TestOgPlotDateClearer : OgPlotDateClearer
+    {
+        public override bool ClearSpace(Drive drive, FileSize requiredSize)
+        {
+            using var logger = LoggingServices.TraceMethod(this);
+
+            drive.ValidateArgument(nameof(drive));
+            requiredSize.ValidateArgument(nameof(requiredSize));
+
+            var freeSpace = drive.AvailableFreeSize;
+            FileSize deletedSize = new SingleByte(0);
+
+            LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize<GibiByte>()} free");
+
+            foreach (var clearableFile in GetClearableFiles(drive, requiredSize))
+            {
+                var fileSize = clearableFile.GetFileSize<GibiByte>();
+
+                LoggingServices.Log($"Test Mode: {clearableFile.FullName} of size {fileSize} on drive {drive.Alias} would have been cleared to make enough space for {requiredSize}");
+
+                deletedSize += fileSize;
+
+                if (deletedSize + freeSpace >= requiredSize)
+                {
+                    LoggingServices.Log($"Test Mode: Would have freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
+
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

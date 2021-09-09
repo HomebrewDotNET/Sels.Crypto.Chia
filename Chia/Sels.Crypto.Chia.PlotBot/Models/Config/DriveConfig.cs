@@ -7,12 +7,8 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
     /// <summary>
     /// Contains settings about drives the plotter will fill with plots.
     /// </summary>
-    public class DriveConfig
+    public class DriveConfig : SharedConfig
     {
-        /// <summary>
-        /// Unique name to identify this drive.
-        /// </summary>
-        public string Alias { get; set; }
         /// <summary>
         /// Directory to fill with plots.
         /// </summary>
@@ -29,7 +25,8 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         public static DriveConfig Default => new DriveConfig()
         {
             Alias = "ChiaDriveOne",
-            Directory = "/path/to/plot/directory"
+            Directory = "/path/to/plot/directory",
+            Priority = 1
         };
     }
 }

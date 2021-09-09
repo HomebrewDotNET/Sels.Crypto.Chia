@@ -100,49 +100,57 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            using (LoggingServices.TraceAction(LogLevel.Debug, $"{PlotBotConstants.ServiceName} started processing", x => $"{PlotBotConstants.ServiceName} finished processing in {x.PrintTotalMs()}"))
+            try
             {
-                if (DoesConfigNeedToBeReloaded())
+                using (LoggingServices.TraceAction(LogLevel.Debug, $"{PlotBotConstants.ServiceName} started processing", x => $"{PlotBotConstants.ServiceName} finished processing in {x.PrintTotalMs()}"))
                 {
-                    try
+                    if (DoesConfigNeedToBeReloaded())
                     {
-                        var newConfig = LoadPlotBotConfig();
-                        var canSafeReload = CanConfigBeSafelyReloaded(newConfig);
+                        try
+                        {
+                            var newConfig = LoadPlotBotConfig();
+                            var canSafeReload = CanConfigBeSafelyReloaded(newConfig);
 
-                        if (!canSafeReload && _plotBot.Plotters.Any(x => x.HasRunningInstances))
-                        {
-                            LoggingServices.Log(LogLevel.Warning, $"Config cannot be safely hot reloaded. Waiting for current plotting instances to finish so config can be fully reloaded");
-                            _plotBot.CanStartNewInstances = false;
+                            if (!canSafeReload && _plotBot.Plotters.Any(x => x.HasRunningInstances))
+                            {
+                                LoggingServices.Log(LogLevel.Warning, $"Config cannot be safely hot reloaded. Waiting for current plotting instances to finish so config can be fully reloaded");
+                                _plotBot.CanStartNewInstances = false;
+                            }
+                            else
+                            {
+                                // Safe to reload
+                                LoggingServices.Log($"{PlotBotConstants.ServiceName} can safely reload the configuration. Reloading config");
+                                _plotBot.ReloadConfig(newConfig);
+                                _plotBot.CanStartNewInstances = true;
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            // Safe to reload
-                            LoggingServices.Log($"{PlotBotConstants.ServiceName} can safely reload the configuration. Reloading config");
-                            _plotBot.ReloadConfig(newConfig);
-                            _plotBot.CanStartNewInstances = true;
+                            LoggingServices.Log(LogLevel.Warning, $"{PlotBotConstants.ServiceName} ran into issues when trying to reload config. Ignoring and continuing with old config", ex);
                         }
                     }
-                    catch (Exception ex)
+
+                    var result = _plotBot.Plot(stoppingToken);
+
+                    result.CreatedPlots.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} created {x}"));
+
+                    if (result.DeletedPlotters > 0)
                     {
-                        LoggingServices.Log(LogLevel.Warning, $"{PlotBotConstants.ServiceName} ran into issues when trying to reload config. Ignoring and continuing with old config", ex);
+                        LoggingServices.Log($"{PlotBotConstants.ServiceName} removed {result.DeletedPlotters} plotters");
                     }
+
+                    result.StartedInstances.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} started instance {x}"));
+
+                    result.RunningInstances.Execute(x => LoggingServices.Log($"Instance {x.Name} is creating {x.PlotName} of size {x.PlotSize} and has been running for {x.StartTime.GetMinuteDifference()} minutes{(x.TimeoutDate.HasValue() ? $" and will timeout in {x.TimeoutDate.Value.GetMinuteDifference()} minutes" : "")}"));
+
+                    if (!result.StartedInstances.HasValue() && !result.RunningInstances.HasValue()) LoggingServices.Log($"{PlotBotConstants.ServiceName} is idle");
                 }
-
-                var result = _plotBot.Plot(stoppingToken);
-
-                result.CreatedPlots.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} created {x}"));
-
-                if (result.DeletedPlotters > 0)
-                {
-                    LoggingServices.Log($"{PlotBotConstants.ServiceName} removed {result.DeletedPlotters} plotters");
-                }
-
-                result.StartedInstances.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} started instance {x}"));
-
-                result.RunningInstances.Execute(x => LoggingServices.Log($"Instance {x.Name} is creating {x.PlotName} of size {x.PlotSize} and has been running for {x.StartTime.GetMinuteDifference()} minutes{(x.TimeoutDate.HasValue() ? $" and will timeout in {x.TimeoutDate.Value.GetMinuteDifference()} minutes": "")}"));
-
-                if (!result.StartedInstances.HasValue() && !result.RunningInstances.HasValue()) LoggingServices.Log($"{PlotBotConstants.ServiceName} is idle");
             }
+            catch(Exception ex)
+            {
+                LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} ran into a fatal error when plotting. Plot bot won't start new instances but will let the current instances finish", ex);
+                _plotBot.CanStartNewInstances = false;
+            }            
         }
 
         private PlotBotConfig LoadPlotBotConfig()
@@ -224,7 +232,11 @@ namespace Sels.Crypto.Chia.PlotBot
                     }
                     else
                     {
-                        LoggingServices.Log($"{PlotBotConstants.ServiceName} could not be properly initialized. Service will stop. This is normal when running the service for the first time.");
+                        var message = $"{PlotBotConstants.ServiceName} could not be properly initialized. Service will stop. This is normal when running the service for the first time.";
+
+                        LoggingServices.Log(message);
+
+                        throw new InvalidOperationException(message);
                     }
                 }
                 catch (Exception ex)

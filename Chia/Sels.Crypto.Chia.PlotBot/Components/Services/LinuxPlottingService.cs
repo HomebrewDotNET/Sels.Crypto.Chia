@@ -13,8 +13,10 @@ using Sels.Core.Linux.Exceptions.LinuxCommand;
 using Sels.Core.Linux.Components.LinuxCommand.Commands.Core;
 using Sels.Core.Linux.Components.LinuxCommand.Commands;
 using Sels.Core.Linux.Extensions;
+using Sels.Core.Components.Commands;
+using Sels.Core.Linux.Components.LinuxCommand.Commands.Bash;
 
-namespace Sels.Crypto.Chia.PlotBot.Services
+namespace Sels.Crypto.Chia.PlotBot.Components.Services
 {
     public class LinuxPlottingService : IPlottingService
     {
@@ -24,18 +26,18 @@ namespace Sels.Crypto.Chia.PlotBot.Services
             plotCommand.ValidateArgument(nameof(plotCommand));
             progressFile.ValidateArgument(nameof(progressFile));
 
-            var plottingCommand = CreatePlotCommand(plotCommand, progressFile, cancellationToken);
+            var plottingCommand = CreatePlotCommand(plotCommand, progressFile);
             
             LoggingServices.Log(LogLevel.Trace, $"Executing following plotting command: {plottingCommand.BuildCommand()}");
 
-            var plottingResult = plottingCommand.Execute();
+            var plottingResult = plottingCommand.Execute(GetExecutionOptions(true, cancellationToken));
 
             LoggingServices.Log(LogLevel.Trace, $"Plot command exited with {plottingResult.ExitCode}");
 
             plottingResult.GetResult();
         }
 
-        protected virtual ILinuxCommand CreatePlotCommand(string plotCommand, FileInfo progressFile, CancellationToken cancellationToken)
+        protected virtual ILinuxCommand CreatePlotCommand(string plotCommand, FileInfo progressFile)
         {
             using var logger = LoggingServices.TraceMethod(this);
             plotCommand.ValidateArgument(nameof(plotCommand));
@@ -48,11 +50,30 @@ namespace Sels.Crypto.Chia.PlotBot.Services
             // Redirect error to output file
             var redirectError = new DynamicCommand("2>&1");
             // Chain command together
-            var commandChain = new ChainCommand(plottingCommand, CommandChainer.None, redirectError, CommandChainer.Pipe, teeCommand)
-            {
-                CancellationToken = cancellationToken
-            };
+            var commandChain = new ChainCommand(plottingCommand, CommandChainer.None, redirectError, CommandChainer.Pipe, teeCommand);
             return commandChain;
+        }
+
+        protected virtual CommandExecutionOptions GetExecutionOptions(bool failOnErrorOutput, CancellationToken token)
+        {
+            return new CommandExecutionOptions(LoggingServices.Loggers)
+            {
+                FailOnErrorOutput = failOnErrorOutput,
+                Token = token
+            };
+        }
+    }
+
+    public class TestLinuxPlottingService : LinuxPlottingService
+    {
+        protected override ILinuxCommand CreatePlotCommand(string plotCommand, FileInfo progressFile)
+        {
+            using var logger = LoggingServices.TraceMethod(this);
+            var plottingCommand = base.CreatePlotCommand(plotCommand, progressFile);
+
+            LoggingServices.Log($"Test Mode: Plotting command would have been: {plottingCommand.BuildCommand()}");
+
+            return new DynamicBashCommand("sleep 60s");
         }
     }
 }

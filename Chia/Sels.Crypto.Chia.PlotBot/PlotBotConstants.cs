@@ -18,7 +18,7 @@ namespace Sels.Crypto.Chia.PlotBot
         public static class Logging
         {
             public static Type DefaultLoggingFileSize = typeof(GibiByte); 
-            public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}. ${exception}";
+            public const string Layout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}|${exception}";
             public const string FullLayout = "${machinename}|${longdate}|${level:uppercase=true}|${logger}|${message}: ${newline}${exception:format=ToString}";
             public const string MailSubjectLayout = ServiceName + " ${machinename} ${level:uppercase=true}";
             public const string MailBodyLayout = "Date: ${longdate}${newline}Message: ${message}${newline}Error: ${newline}${exception:format=ToString}";
@@ -84,9 +84,10 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const int DefaultRam = 4000;
                 public const int DefaultBuckets = 128;
 
-                public static class Directory
+                public static class Work
                 {
                     public const bool DefaultArchiveProgressFiles = true;
+                    public const bool DefaultThrowOnMissingCacheSpace = true;
                 }
             }
 

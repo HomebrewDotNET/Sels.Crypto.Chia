@@ -11,10 +11,14 @@ using System.Linq;
 using Sels.Core.Components.Parameters;
 using Microsoft.Extensions.Logging;
 using Sels.Core.Templates.FileSystem;
+using Sels.Core.Templates.FileSizes;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
-    public class Plotter : IDisposable
+    /// <summary>
+    /// Plotter who is able to create new plots by starting plotting instances.
+    /// </summary>
+    public class Plotter : SharedSettings, IDisposable
     {
         // Fields
         private readonly IPlottingService _plottingService;
@@ -38,18 +42,6 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
         #region PlotterSettings
         /// <summary>
-        /// Boolean indicating if this plotter is allowed to start new instances.
-        /// </summary>
-        public bool Enabled { get; set; } = true;
-        /// <summary>
-        /// How many hours before a plotting instance is considered timed out. This will cause Plot Bot to dispose the instance and raise an error.
-        /// </summary>
-        public int Timeout { get; set; }
-        /// <summary>
-        /// Unique name to identifiy this plotter config.
-        /// </summary>
-        public string Alias { get; set; }
-        /// <summary>
         /// Size of plots that this plotter will create.
         /// </summary>
         public PlotSize PlotSize { get; set; }
@@ -57,10 +49,6 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// How many plots the instance will create.
         /// </summary>
         public int PlotAmount { get; set; } = 1;
-        /// <summary>
-        /// How many instances this plotter can use.
-        /// </summary>
-        public int MaxInstances { get; set; }
         /// <summary>
         /// Total amount of thread this plotter can use. Threads are divided between all instances.
         /// </summary>
@@ -82,18 +70,13 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// Component that extracts information from the progress file.
         /// </summary>
         public IPlotProgressParser PlotProgressParser { get; set; }
-
-        /// <summary>
-        /// Checks if plotter is allowed to plot to a certain drive
-        /// </summary>
-        public IPlotterDelayer[] PlotterDelayers { get; set; }
         #endregion
 
         #region PlotterWorkingSettings
         /// <summary>
-        /// List of cache directories the plotter can use to create plots
+        /// List of cache directories the plotter can use to create plots.
         /// </summary>
-        public CrossPlatformDirectory[] Caches { get; set; }
+        public PlotterCache[] Caches { get; set; }
         /// <summary>
         /// Directory the plotter uses as working directory. This is where the progress files are placed to monitor the progress of the plotter.
         /// </summary>
@@ -102,13 +85,17 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// If we should archive progress files once a plot instance is done plotting. Can be handy to keep a history.
         /// </summary>
         public bool ArchiveProgressFiles { get; set; }
+        /// <summary>
+        /// If plot bot should throw an exception when it is missing free space on a cache directory.
+        /// </summary>
+        public bool ThrowOnMissingCacheSpace { get; set; }
         #endregion
 
         #region State
         /// <summary>
         /// If this plotter can start new plotting instances.
         /// </summary>
-        public bool CanPlotNew => Enabled && !TaggedForDeletion && _plottingInstances.Count < MaxInstances;
+        private bool CanPlotNew => Enabled && !TaggedForDeletion && _plottingInstances.Count < MaxInstances;
         /// <summary>
         /// Active instances that are plotting.
         /// </summary>
@@ -129,6 +116,41 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         }
 
         /// <summary>
+        /// Checks if this plotter can start new instances.
+        /// </summary>
+        /// <returns></returns>
+        public bool CanPlot()
+        {
+            using var logger = LoggingServices.TraceMethod(this);
+            var canPlot = CanPlotNew;
+
+            // Check caches
+            if(canPlot)
+            {
+                foreach(var cache in Caches)
+                {
+                    if (!cache.HasEnoughFreeDiskSpace)
+                    {
+                        var message = $"Plotter {Alias} can not plot because cache {cache.Directory.Source.FullName} is missing {cache.RequiredFreeDiskSpace.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}. Has {cache.Directory.FreeSpace.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} of free disk space left";
+                        if (ThrowOnMissingCacheSpace)
+                        {
+                            throw new InvalidOperationException(message);
+                        }
+                        else
+                        {
+                            LoggingServices.Log(LogLevel.Warning, message);
+                            return false;
+                        }
+                    }
+
+                    LoggingServices.Debug($"Cache {cache.Directory.Source.FullName} has enough disk space for {cache.RequiredFreeDiskSpace.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}");
+                }
+            }
+
+            return canPlot;
+        }
+
+        /// <summary>
         /// Checks if this plotter can plot to <paramref name="drive"/>.
         /// </summary>
         /// <param name="drive">Drive to check free space on</param>
@@ -138,7 +160,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             drive.ValidateArgument(nameof(drive));
 
-            var canPlot = CanPlotNew && PlotterDelayers.All(x => x.CanStartInstance(this, drive)) && drive.CanBePlotted(PlotSize.FinalSize);
+            var delayers = drive.PlotterDelayers.HasValue() ? drive.PlotterDelayers : PlotterDelayers;
+
+            var canPlot = CanPlotNew && (delayers.HasValue() ? delayers.All(x => x.CanStartInstance(this, drive)) : true) && drive.CanBePlotted(PlotSize.FinalSize);
 
             LoggingServices.Debug($"Plotter {Alias} {(canPlot ? "can" : "can't")} plot to Drive {drive.Alias}");
 
@@ -199,7 +223,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             var instanceSubDirectoryName = Guid.NewGuid().ToString();
             for (int i = 0; i < Caches.Length; i++)
             {
-                var cacheDirectory = Caches[i].Source;
+                var cacheDirectory = Caches[i].Directory.Source;
                 var instanceDirectory = cacheDirectory.CreateSubdirectory(instanceSubDirectoryName);
                 caches.Add(instanceDirectory);
                 parameterizer.AddParameter($"{PlotBotConstants.Parameters.Names.Cache}_{i+1}", instanceDirectory);
@@ -212,7 +236,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             }
 
             LoggingServices.Debug($"{Alias} creating instance to plot to {drive.Alias}");
-            var instance = new PlottingInstance(followNumber, _plottingService, PlotProgressParser, plotCommand, Timeout, this, drive, PlotSize.FinalSize, x => {
+            var instance = new PlottingInstance(followNumber, _plottingService, PlotProgressParser, plotCommand, drive.Timeout.HasValue ? drive.Timeout : Timeout, this, drive, PlotSize.FinalSize, x => {
                 // Delete cache directories
                 caches.ForceExecute(x => x.Delete(true), (x, ex) => LoggingServices.Log($"Could not delete cache directory {x.FullName} for plotting instance {x.Name}", ex));
                 // Remove running instance
@@ -254,5 +278,30 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             // Stop all current instances
             Instances.ForceExecute(x => x.Dispose(), (x, ex) => LoggingServices.Log($"Error occured while disposing plotting instance {x.Name}", ex));
         }
+    }
+
+    /// <summary>
+    /// Cache directory that is used by a <see cref="Plotter"/> to create new plots.
+    /// </summary>
+    public class PlotterCache
+    {
+        public PlotterCache(CrossPlatformDirectory directory, FileSize requiredFileSize)
+        {
+            Directory = directory.ValidateArgument(nameof(directory));
+            RequiredFreeDiskSpace = requiredFileSize.ValidateArgument(nameof(requiredFileSize));
+        }
+
+        /// <summary>
+        /// Cache root directory used to create plots.
+        /// </summary>
+        public CrossPlatformDirectory Directory { get; }
+        /// <summary>
+        /// Minimum required disk space for creating a plot.
+        /// </summary>
+        public FileSize RequiredFreeDiskSpace { get; }
+        /// <summary>
+        /// Indicates if this cache directory has enough free disk space to start creating plots.
+        /// </summary>
+        public bool HasEnoughFreeDiskSpace => Directory.FreeSpace > RequiredFreeDiskSpace; 
     }
 }
