@@ -24,27 +24,36 @@
     {
       "Enabled": true,
       "Alias": "MainPlotter",
-      "PlotSize": "K32",
       "MaxInstances": 3,
-      "TotalThreads": 4,
-      "TotalRam": 4000,
-      "Buckets": 128,
-      "PlotCommand": null,
-      "WorkingDirectories": {
+      "Command": {
+        "PlotSize": "K32",
+        "TotalThreads": 4,
+        "TotalRam": 4000,
+        "Buckets": 128,
+        "PlotCommand": null
+      },
+      "Work": {
         "Caches": [
-          "/mnt/g/Cache/Temp",
-          "/mnt/g/Cache"
+          {
+            "Directory": "/mnt/g/Cache/Temp",
+            "Distribution": 1
+          },
+          {
+            "Directory": "/mnt/g/Cache",
+            "Distribution": 0.5
+          }
         ],
         "WorkingDirectory": "/mnt/g/App",
-        "ArchiveProgressFiles": true
+        "ArchiveProgressFiles": true,
+        "ThrowOnMissingCacheSpace":  true
       },
-      "PlotProgressParser": {
+      "Progress": {
         "Name": "String",
         "Arguments": {
           "Filter": "plot-"
         }
       },
-      "DelaySettings": [
+      "Delay": [
         {
           "Name": "ProgressFile",
           "Arguments": {
@@ -58,7 +67,8 @@
     {
       "Alias": "ChiaDriveOne",
       "Directory": "/mnt/g/App/Plots",
-      "Priority": 1
+      "Priority": 1,
+      "MaxInstances": 1
     }
   ]
 }

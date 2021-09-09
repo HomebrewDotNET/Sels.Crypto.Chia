@@ -9,7 +9,7 @@ using Sels.Core.Templates.FileSystem;
 using Sels.Core.Components.Logging;
 using Sels.Core.Extensions;
 
-namespace Sels.Crypto.Chia.PlotBot.Factories
+namespace Sels.Crypto.Chia.PlotBot.Components.Factories
 {
     public class LinuxDirectoryFactory : GenericFactory<CrossPlatformDirectory>
     {

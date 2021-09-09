@@ -22,10 +22,8 @@ using Sels.Core.Components.FileSizes.Byte;
 using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Crypto.Chia.PlotBot.ValidationProfiles;
 using Sels.Core.Components.FileSystem;
-using Sels.Crypto.Chia.PlotBot.Factories;
 using Sels.Core.Components.Factory;
 using Sels.Core.Components.Conversion;
-using Sels.Crypto.Chia.PlotBot.Services;
 using Microsoft.Extensions.Configuration;
 using NLog.Common;
 using Sels.Core.Components.IoC;
@@ -37,6 +35,8 @@ using Sels.Core.Extensions.Linq;
 using System.Net.Mail;
 using Sels.Core.Components.Logging;
 using Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers;
+using Sels.Crypto.Chia.PlotBot.Components.Factories;
+using Sels.Crypto.Chia.PlotBot.Components.Services;
 
 namespace Sels.Crypto.Chia.PlotBot
 {

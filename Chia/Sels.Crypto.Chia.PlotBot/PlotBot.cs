@@ -112,9 +112,9 @@ namespace Sels.Crypto.Chia.PlotBot
                 // Start up new plotting instances
                 using (LoggingServices.TraceAction(LogLevel.Debug, "Start plotting"))
                 {
-                    foreach (var plotter in Plotters.Where(x => x.CanPlotNew))
+                    foreach (var plotter in Plotters.Where(x => x.CanPlot()))
                     {
-                        foreach (var drive in Drives.OrderByDescending(x => x.HasEnoughSpaceFor(plotter.PlotSize.FinalSize)).ThenBy(x => x.Priority))
+                        foreach (var drive in Drives.Where(x => x.Enabled).OrderByDescending(x => x.HasEnoughSpaceFor(plotter.PlotSize.FinalSize)).ThenBy(x => x.Priority))
                         {
                             if (token.IsCancellationRequested) return result;
 
@@ -123,7 +123,7 @@ namespace Sels.Crypto.Chia.PlotBot
                                 startedInstances.Add(plotter.PlotToDrive(drive).Name);
                             }
 
-                            if (!plotter.CanPlotNew)
+                            if (!plotter.CanPlot())
                             {
                                 break;
                             }                            
@@ -167,7 +167,7 @@ namespace Sels.Crypto.Chia.PlotBot
             {
                 var existingPlotter = Plotters.FirstOrDefault(x => configPlotter.Alias.Equals(x.Alias, StringComparison.OrdinalIgnoreCase));
 
-                var configPlotSize = config.Settings.PlotSizes.First(x => configPlotter.PlotSize.Equals(x.Name, StringComparison.OrdinalIgnoreCase));
+                var configPlotSize = config.Settings.PlotSizes.First(x => configPlotter.Command.PlotSize.Equals(x.Name, StringComparison.OrdinalIgnoreCase));
                 var plotSize = new PlotSize() { Name = configPlotSize.Name, CreationSize = FileSize.CreateFromSize<GibiByte>(configPlotSize.CreationSize), FinalSize = FileSize.CreateFromSize<GibiByte>(configPlotSize.FinalSize) };
 
                 var isNew = !existingPlotter.HasValue();
@@ -184,15 +184,16 @@ namespace Sels.Crypto.Chia.PlotBot
                 
                 plotter.PlotSize = plotSize;
                 plotter.MaxInstances = configPlotter.MaxInstances;
-                plotter.TotalThreads = configPlotter.TotalThreads;
-                plotter.TotalRam = configPlotter.TotalRam;
-                plotter.Buckets = configPlotter.Buckets;
-                plotter.PlotCommand = configPlotter.PlotCommand.HasValue() ? configPlotter.PlotCommand : config.Settings.DefaultPlotCommand;
-                plotter.Caches = configPlotter.WorkingDirectories.Caches.SelectOrDefault(x => _directoryFactory.Create(x)).ToArrayOrDefault();
-                plotter.WorkingDirectory = _directoryFactory.Create(configPlotter.WorkingDirectories.WorkingDirectory);
-                plotter.ArchiveProgressFiles = configPlotter.WorkingDirectories.ArchiveProgressFiles;
-                plotter.PlotProgressParser = _serviceFactory.Resolve<IPlotProgressParser>(configPlotter.PlotProgressParser.Name).InjectProperties(configPlotter.PlotProgressParser.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate();
-                plotter.PlotterDelayers = configPlotter.DelaySettings.SelectOrDefault(x => _serviceFactory.Resolve<IPlotterDelayer>(x.Name).InjectProperties(x.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate()).ToArrayOrDefault();
+                plotter.TotalThreads = configPlotter.Command.TotalThreads;
+                plotter.TotalRam = configPlotter.Command.TotalRam;
+                plotter.Buckets = configPlotter.Command.Buckets;
+                plotter.PlotCommand = configPlotter.Command.PlotCommand.HasValue() ? configPlotter.Command.PlotCommand : config.Settings.DefaultPlotCommand;
+                plotter.Caches = CreateCacheDirectories(configPlotter.Work.Caches, plotSize);
+                plotter.WorkingDirectory = _directoryFactory.Create(configPlotter.Work.WorkingDirectory);
+                plotter.ArchiveProgressFiles = configPlotter.Work.ArchiveProgressFiles;
+                plotter.ThrowOnMissingCacheSpace = configPlotter.Work.ThrowOnMissingCacheSpace;
+                plotter.PlotProgressParser = _serviceFactory.Resolve<IPlotProgressParser>(configPlotter.Progress.Name).InjectProperties(configPlotter.Progress.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate();
+                plotter.PlotterDelayers = CreateDelayers(configPlotter.Delay);
 
                 plotter.TaggedForDeletion = false;
 
@@ -228,10 +229,13 @@ namespace Sels.Crypto.Chia.PlotBot
                 var drive = isNew ? new Drive() : existingDrive;
 
                 drive.Alias = configDrive.Alias;
+                drive.Enabled = configDrive.Enabled;
+                drive.Timeout = configDrive.Timeout;
+                drive.MaxInstances = configDrive.MaxInstances;
+                drive.PlotterDelayers = CreateDelayers(configDrive.Delay);
                 drive.Directory = _directoryFactory.Create(configDrive.Directory);
                 drive.Priority = configDrive.Priority;
-                drive.DriveClearers = driveClearers;
-               
+                drive.DriveClearers = driveClearers;           
 
                 if (isNew)
                 {
@@ -243,7 +247,19 @@ namespace Sels.Crypto.Chia.PlotBot
                     LoggingServices.Log($"Updated drive {drive.Alias}");
                 }
             }
+        }
 
+        private IPlotterDelayer[] CreateDelayers(ComponentConfig[] configs)
+        {
+            return configs.SelectOrDefault(x => _serviceFactory.Resolve<IPlotterDelayer>(x.Name).InjectProperties(x.Arguments.ToDictionary(x => x.Key, x => (object)x.Value), _typeConverter).Validate()).ToArrayOrDefault();
+        }
+
+        private PlotterCache[] CreateCacheDirectories(PlotterCacheConfig[] caches, PlotSize plotSize)
+        {
+            return caches.SelectOrDefault(x =>
+            {
+                return new PlotterCache(_directoryFactory.Create(x.Directory), plotSize.CreationSize * x.Distribution);
+            }).ToArrayOrDefault();
         }
 
         public void Dispose()

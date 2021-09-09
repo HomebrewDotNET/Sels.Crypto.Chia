@@ -16,15 +16,11 @@ using Sels.Core.Templates.FileSystem;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
-    public class Drive
+    public class Drive : SharedSettings
     {
         // Fields
         private readonly List<PlottingInstance> _plottingInstances = new List<PlottingInstance>();
 
-        /// <summary>
-        /// Unique name to identify this drive.
-        /// </summary>
-        public string Alias { get; set; }
         /// <summary>
         /// Directory to fill with plots.
         /// </summary>
@@ -84,6 +80,13 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         public bool CanBePlotted(FileSize size)
         {
             using var logger = LoggingServices.TraceMethod(this);
+
+            if(MaxInstances.HasValue && _plottingInstances.Count >= MaxInstances)
+            {
+                LoggingServices.Debug($"Drive {Alias} already has {_plottingInstances.Count} instances running");
+                return false;
+            }
+
             var freeSize = AvailableFreeSize;
             var enoughSpace = freeSize > size;
 

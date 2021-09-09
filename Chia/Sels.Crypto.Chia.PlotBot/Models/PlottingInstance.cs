@@ -74,7 +74,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// </summary>
         public bool IsPlotting => !_plottingTask.IsCompleted;
 
-        public PlottingInstance(int followNumber, IPlottingService plottingService, IPlotProgressParser plotFileNameSeeker, string plotCommand, int timeout, Plotter plotter, Drive drive, FileSize reservedDestinationSize, Action<PlottingInstance> disposeAction)
+        public PlottingInstance(int followNumber, IPlottingService plottingService, IPlotProgressParser plotFileNameSeeker, string plotCommand, int? timeout, Plotter plotter, Drive drive, FileSize reservedDestinationSize, Action<PlottingInstance> disposeAction)
         {
             FollowNumber = followNumber;
             Plotter = plotter.ValidateArgument(nameof(plotter));
@@ -90,9 +90,9 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             ProgressFile.Write(string.Empty);
 
             StartTime = DateTime.Now;
-            if(timeout > 0)
+            if(timeout.HasValue)
             {
-                TimeoutDate = DateTime.Now.AddHours(timeout);
+                TimeoutDate = DateTime.Now.AddHours(timeout.Value);
             }
 
             _plottingTask = Task.Run(() => plottingService.StartPlotting(plotCommand, ProgressFile, _tokenSource.Token));
