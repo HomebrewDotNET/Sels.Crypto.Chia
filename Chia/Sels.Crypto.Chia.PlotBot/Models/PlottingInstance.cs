@@ -127,7 +127,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
                 while (IsPlotting)
                 {
-                    LoggingServices.Debug($"Cancelled Instance {Name} waiting for task to finish");
+                    LoggingServices.Trace($"Cancelled Instance {Name} waiting for task to finish");
                     Thread.Sleep(250);
                 }
             }           

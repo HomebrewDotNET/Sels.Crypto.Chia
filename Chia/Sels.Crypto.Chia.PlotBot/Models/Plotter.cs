@@ -197,7 +197,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                 followNumber++;
             }
 
-            LoggingServices.Log($"New plotting instance will use {threads} Threads, {ram}MB Ram, {Buckets} buckets to create {PlotSize.Name} plots of size {PlotSize.FinalSize} using a cache size of {PlotSize.CreationSize} for destination drive {drive.Alias}");
+            LoggingServices.Log($"New plotting instance will use {threads} Threads, {ram}MB Ram, {Buckets} buckets to create {PlotAmount} plots of size {PlotSize.FinalSize} ({PlotSize.Name}) using a cache size of {PlotSize.CreationSize} for destination drive {drive.Alias}");
 
             LoggingServices.Debug($"{Alias} preparing parameters to plot to {drive.Alias}");
             // Prepare parameters
@@ -257,7 +257,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             plottingInstance.ValidateArgument(nameof(plottingInstance));
 
-            LoggingServices.Debug($"Adding instance {plottingInstance} to Plotter {Alias}");
+            LoggingServices.Debug($"Adding instance {plottingInstance.Name} to Plotter {Alias}");
 
             _plottingInstances.Add(plottingInstance);
         }
@@ -267,7 +267,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             plottingInstance.ValidateArgument(nameof(plottingInstance));
 
-            LoggingServices.Debug($"Removing instance {plottingInstance} from Plotter {Alias}");
+            LoggingServices.Debug($"Removing instance {plottingInstance.Name} from Plotter {Alias}");
 
             _plottingInstances.Remove(plottingInstance);
         }

@@ -92,14 +92,22 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
             LoggingServices.Trace($"Drive {Alias} has {freeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} of free space");
 
-            if (!enoughSpace && DriveClearers.HasValue())
+            try
             {
-                LoggingServices.Debug($"Drive {Alias} does not enough free disk space for {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}. Trying to clear disk space with drive clearers");
-                if(DriveClearers.Any(x => x.ClearSpace(this, size)))
+                if (!enoughSpace && DriveClearers.HasValue())
                 {
-                    LoggingServices.Log($"Drive {Alias} has cleared extra space");
-                    return true;
+                    LoggingServices.Debug($"Drive {Alias} does not enough free disk space for {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}. Trying to clear disk space with drive clearers");
+                    if (DriveClearers.Any(x => x.ClearSpace(this, size)))
+                    {
+                        LoggingServices.Log($"Drive {Alias} has cleared extra space");
+                        return true;
+                    }
                 }
+            }
+            catch(Exception ex)
+            {
+                LoggingServices.Log(LogLevel.Warning, $"Drive {Alias} ran into issues when trying to clear disk space", ex);
+                enoughSpace = AvailableFreeSize > size;
             }
 
             if (!enoughSpace)
@@ -115,7 +123,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             plottingInstance.ValidateArgument(nameof(plottingInstance));
 
-            LoggingServices.Debug($"Adding instance {plottingInstance} to Drive {Alias}");
+            LoggingServices.Debug($"Adding instance {plottingInstance.Name} to Drive {Alias}");
 
             _plottingInstances.Add(plottingInstance);
         }
@@ -125,7 +133,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             plottingInstance.ValidateArgument(nameof(plottingInstance));
 
-            LoggingServices.Debug($"Removing instance {plottingInstance} from Drive {Alias}");
+            LoggingServices.Debug($"Removing instance {plottingInstance.Name} from Drive {Alias}");
 
             _plottingInstances.Remove(plottingInstance);
         }

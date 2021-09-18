@@ -24,13 +24,6 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
             instance.ValidateArgument(nameof(instance));
             plotFileName = string.Empty;
 
-            // Wait for file to be able to be read
-            while (instance.ProgressFile.IsLocked())
-            {
-                Thread.Sleep(250);
-                LoggingServices.Debug($"Progress file {instance.ProgressFile.FullName} is locked. Waiting for it to unlock");
-            }
-
             var progressFileContent = instance.ProgressFile.Read();
 
             // Check file content for words matching the regex filter

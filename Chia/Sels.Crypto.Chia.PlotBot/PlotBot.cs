@@ -29,6 +29,10 @@ namespace Sels.Crypto.Chia.PlotBot
         private readonly IServiceFactory _serviceFactory;
         private readonly IGenericTypeConverter _typeConverter;
         private readonly IPlottingService _plottingService;
+        private readonly IEnumerable<IPlotBotInitializerAction> _initializerActions;
+
+        // State
+        private bool _initialized = false;
 
         // Properties
         /// <summary>
@@ -44,12 +48,13 @@ namespace Sels.Crypto.Chia.PlotBot
         /// </summary>
         public List<Drive> Drives { get; private set; } = new List<Drive>();
 
-        public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IServiceFactory serviceFactory, IGenericTypeConverter typeConverter, IPlottingService plottingService)
+        public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IServiceFactory serviceFactory, IGenericTypeConverter typeConverter, IPlottingService plottingService, IEnumerable<IPlotBotInitializerAction> initializerActions = null)
         {
             _directoryFactory = directoryFactory.ValidateArgument(nameof(directoryFactory));
             _serviceFactory = serviceFactory.ValidateArgument(nameof(serviceFactory));
             _typeConverter = typeConverter.ValidateArgument(nameof(typeConverter));
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
+            _initializerActions = initializerActions;
         }
 
         public PlotBotResult Plot(CancellationToken token = default)
@@ -149,6 +154,13 @@ namespace Sels.Crypto.Chia.PlotBot
 
             ReloadPlotters(config);
             ReloadDrives(config);
+
+            if(!_initialized && _initializerActions.HasValue())
+            {
+                _initializerActions.ForceExecute(x => x.Handle(Plotters.ToArray(), Drives.ToArray()), (x, ex) => LoggingServices.Log(LogLevel.Warning ,$"Initializer action <{x.GetType().Name}> ran into an issue when executing", ex));
+
+                _initialized = true;
+            }
         }
 
         private void ReloadPlotters(PlotBotConfig config)
