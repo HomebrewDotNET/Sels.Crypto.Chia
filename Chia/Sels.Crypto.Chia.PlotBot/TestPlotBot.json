@@ -8,14 +8,15 @@
       {
         "Name": "K32",
         "CreationSize": 220.0,
-        "FinalSize": 101.4
+        "FinalSize": 10100.4
       }
     ],
     "DriveClearers": [
       {
         "Name": "OgDate",
         "Arguments": {
-          "ThresHold": "07/07/2021"
+          "ThresHold": "07/07/2021",
+          "AdditionalDrives": "/mnt/c/; /mnt/g/"
         }
       }
     ]
@@ -50,6 +51,7 @@
       "Progress": {
         "Name": "String",
         "Arguments": {
+          "TransferExtension": ".plot.tmp",
           "Filter": "plot-"
         }
       },

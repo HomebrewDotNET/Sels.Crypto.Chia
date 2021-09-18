@@ -2,14 +2,17 @@
 using Sels.Core.Components.FileSizes.Byte;
 using Sels.Core.Components.FileSizes.Byte.Binary;
 using Sels.Core.Components.Logging;
+using Sels.Core.Contracts.Factory;
 using Sels.Core.Extensions;
 using Sels.Core.Templates.FileSizes;
+using Sels.Core.Templates.FileSystem;
 using Sels.Crypto.Chia.PlotBot.Contracts;
 using Sels.Crypto.Chia.PlotBot.Models;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
@@ -25,12 +28,38 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
         private const int StartIndex = 9;
         private const int DateLength = 16;
         private const string DateTimeFormat = "yyyy-MM-dd-HH-mm";
+        private const string DriveSplitter = ";";
+
+        // Fields
+        private string _additionalDrives;
+        private CrossPlatformDirectory[] _additionalDirectories;
+        private readonly IFactory<CrossPlatformDirectory> _directoryFactory;
 
         // Properties
+        public string AdditionalDrives { 
+            get 
+            { 
+                return _additionalDrives; 
+            } 
+            set 
+            {
+                _additionalDrives = value;
+                if (_additionalDrives.HasValue())
+                {
+                    _additionalDirectories = _additionalDrives.Split(DriveSplitter, StringSplitOptions.RemoveEmptyEntries).Select(x => _directoryFactory.Create(x.Trim())).ToArray();
+                }
+            } 
+        }
+
         /// <summary>
         /// Plots older than this date can be deleted.
         /// </summary>
         public DateTime ThresHold { get; set; }
+
+        public OgPlotDateClearer(IFactory<CrossPlatformDirectory> directoryFactory)
+        {
+            _directoryFactory = directoryFactory.ValidateArgument(nameof(directoryFactory));
+        }
 
         public virtual bool ClearSpace(Drive drive, FileSize requiredSize)
         {
@@ -44,7 +73,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 
             LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize<GibiByte>()} free");
 
-            foreach(var clearableFile in GetClearableFiles(drive, requiredSize))
+            foreach(var clearableFile in GetClearableFiles(drive))
             {
                 var fileSize = clearableFile.GetFileSize<GibiByte>();
                 LoggingServices.Log($"Clearing {clearableFile.FullName} of size {fileSize} on drive {drive.Alias}");
@@ -63,11 +92,49 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
             return false;
         }
 
-        public IEnumerable<FileInfo> GetClearableFiles(Drive drive, FileSize requiredSize)
+        public IEnumerable<FileInfo> GetClearableFiles(Drive drive)
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            var plots = drive.Directory.Source.GetFiles(PlotFilter, SearchOption.AllDirectories);
+            // Seach drive root first
+            LoggingServices.Debug($"Seaching drive {drive.Alias} for clearable files");
+            var plots = GetClearableFiles(drive.Directory);
+
+            foreach(var plot in plots)
+            {
+                yield return plot;
+            }
+
+            if (_additionalDirectories.HasValue())
+            {
+                var mointPoint = drive.Directory.MountPoint;
+                LoggingServices.Debug($"Seaching additional drives for drive {drive.Alias} that have the same mount point. Moint point is <{mointPoint}>");
+                var matchingDirectories = _additionalDirectories.Where(x => x.Exists && x.MountPoint.Equals(mointPoint)).ToArray();
+
+                if (matchingDirectories.HasValue())
+                {
+                    foreach(var directory in matchingDirectories)
+                    {
+                        LoggingServices.Debug($"Seaching additional drive {directory.FullName} for clearable files");
+
+                        foreach(var plot in GetClearableFiles(directory))
+                        {
+                            yield return plot;
+                        }
+                    }
+                }
+                else
+                {
+                    LoggingServices.Debug($"None of the additional drives share a moint point with drive {drive.Alias}");
+                }
+            }
+        }
+
+        public IEnumerable<FileInfo> GetClearableFiles(CrossPlatformDirectory directory)
+        {
+            using var logger = LoggingServices.TraceMethod(this);
+
+            var plots = directory.Source.GetFiles(PlotFilter, SearchOption.AllDirectories);
 
             LoggingServices.Log(LogLevel.Debug, $"{Name} found {plots.Length} plots to check");
 
@@ -77,23 +144,23 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
                 {
                     var datePart = plot.Name.Substring(StartIndex, DateLength);
 
-                    LoggingServices.Debug($"Extracted date section {datePart} from plot {plot.FullName}");
+                    LoggingServices.Trace($"Extracted date section {datePart} from plot {plot.FullName}");
 
                     if (DateTime.TryParseExact(datePart, DateTimeFormat, null, DateTimeStyles.None, out var date))
                     {
-                        if(date < ThresHold)
+                        if (date < ThresHold)
                         {
-                            LoggingServices.Debug($"Plot {plot.FullName} was created on {date} and passed the threshold date of {ThresHold}");
+                            LoggingServices.Trace($"Plot {plot.FullName} was created on {date} and passed the threshold date of {ThresHold}");
                             yield return plot;
                         }
                         else
                         {
-                            LoggingServices.Debug($"Plot {plot.FullName} was created on {date} and did not pass the threshold date of {ThresHold}");
-                        }                       
+                            LoggingServices.Trace($"Plot {plot.FullName} was created on {date} and did not pass the threshold date of {ThresHold}");
+                        }
                     }
                     else
                     {
-                        LoggingServices.Debug($"Could not convert date section from Plot {plot.FullName}");
+                        LoggingServices.Warning($"Could not convert date section from Plot {plot.FullName}");
                     }
                 }
             }
@@ -108,6 +175,11 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 
     public class TestOgPlotDateClearer : OgPlotDateClearer
     {
+        public TestOgPlotDateClearer(IFactory<CrossPlatformDirectory> directoryFactory) : base(directoryFactory)
+        {
+
+        }
+
         public override bool ClearSpace(Drive drive, FileSize requiredSize)
         {
             using var logger = LoggingServices.TraceMethod(this);
@@ -120,7 +192,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 
             LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize<GibiByte>()} free");
 
-            foreach (var clearableFile in GetClearableFiles(drive, requiredSize))
+            foreach (var clearableFile in GetClearableFiles(drive))
             {
                 var fileSize = clearableFile.GetFileSize<GibiByte>();
 

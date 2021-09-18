@@ -37,6 +37,7 @@ using Sels.Core.Components.Logging;
 using Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers;
 using Sels.Crypto.Chia.PlotBot.Components.Factories;
 using Sels.Crypto.Chia.PlotBot.Components.Services;
+using Sels.Crypto.Chia.PlotBot.Components.InitializerActions;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -108,6 +109,17 @@ namespace Sels.Crypto.Chia.PlotBot
                     {
                         services.AddHostedService<PlotBotManager>();
                         services.AddSingleton<IPlottingService, LinuxPlottingService>();
+                    }
+
+                    // Setup initializer actions
+                    if (configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.CleanupCache, false))
+                    {
+                        services.AddSingleton<IPlotBotInitializerAction, CacheCleanerAction>();
+                    }
+
+                    if(configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.CleanupFailedCopy, false))
+                    {
+                        services.AddSingleton<IPlotBotInitializerAction, TempFileCleanerAction>();
                     }
 
                     // Setup service factory

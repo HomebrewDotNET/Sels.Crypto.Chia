@@ -48,6 +48,9 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string TestMode = "Service.TestMode";
                 public const string ConfigFile = "Service.ConfigFile";
                 public const string Interval = "Service.Interval";
+
+                public const string CleanupCache = "Service.PlotBot.CleanupCache";
+                public const string CleanupFailedCopy = "Service.PlotBot.CleanupFailedCopy";
             }
 
             public static class LogSettings
