@@ -38,7 +38,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers
                     // Append extension if it's missing
                     if (!matchedFileName.EndsWith(PlotBotConstants.Plotting.PlotFileExtension))
                     {
-                        LoggingServices.Debug($"Regex match {matchedFileName} did not end with {PlotBotConstants.Plotting.PlotFileExtension}. Adding it");
+                        LoggingServices.Debug($"String match {matchedFileName} did not end with {PlotBotConstants.Plotting.PlotFileExtension}. Adding it");
                         matchedFileName += PlotBotConstants.Plotting.PlotFileExtension;
                     }
 

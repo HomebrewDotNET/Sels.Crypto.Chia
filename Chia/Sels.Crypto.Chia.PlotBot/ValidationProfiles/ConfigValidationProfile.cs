@@ -69,7 +69,8 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
                 .AddValidValidation(x => x.Timeout, x => !x.HasValue || x.Value > 0, x => $"{x.Property.Name} must be above 0. Was <{x.PropertyValue}>");
 
             CreateValidator<ComponentConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")            
+                .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>") 
+                .CannotBeNull(x => x.Arguments, x => $"{x.Property.Name} must be defined")
                 .AddValidCollectionValidation(x => x.Arguments, x => x.Key.HasValue(), x => $"Argument key cannot be empty or whitespace. Was <{x.ElementValue}>");
 
             CreateValidator<DriveConfig>()                

@@ -220,7 +220,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
                         var archiveDirectory = new DirectoryInfo(Path.Combine(ProgressFile.DirectoryName, ArchiveFolderName));
                         archiveDirectory.CreateIfNotExist();
 
-                        var fileName = $"{ProgressFile.GetNameWithoutExtension()}_{DateTime.Now.ToString("dd-MM-yyyy_hh-mm-ss")}{ProgressFile.Extension}";
+                        var fileName = $"{ProgressFile.GetNameWithoutExtension()}_{DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss")}{ProgressFile.Extension}";
 
                         ProgressFile.CopyTo(archiveDirectory, fileName);
                     }

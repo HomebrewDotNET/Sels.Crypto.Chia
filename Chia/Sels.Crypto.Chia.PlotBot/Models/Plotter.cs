@@ -12,6 +12,7 @@ using Sels.Core.Components.Parameters;
 using Microsoft.Extensions.Logging;
 using Sels.Core.Templates.FileSystem;
 using Sels.Core.Templates.FileSizes;
+using Sels.Core.Extensions.Conversion;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
@@ -181,11 +182,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
             LoggingServices.Debug($"{Alias} dividing resources to plot to {drive.Alias}");
             string plotCommand;
-            var threads = TotalThreads / MaxInstances;
-            var ram = TotalRam / MaxInstances;
+            var threads = Math.Round(TotalThreads / MaxInstances.Value.ConvertTo<double>(), MidpointRounding.AwayFromZero).ConvertTo<int>();
+            var ram = Math.Round(TotalRam / MaxInstances.Value.ConvertTo<double>(), MidpointRounding.AwayFromZero).ConvertTo<int>();
 
-            // Last instance takes the rest of the division
-            if(_plottingInstances.Count == MaxInstances - 1)
+            // Last instance uses the rest of the resources
+            if(_plottingInstances.Count == MaxInstances.Value-1)
             {
                 threads = TotalThreads - (threads * _plottingInstances.Count);
                 ram = TotalRam - (ram * _plottingInstances.Count);

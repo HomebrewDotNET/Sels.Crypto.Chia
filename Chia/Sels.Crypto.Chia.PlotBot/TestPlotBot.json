@@ -8,7 +8,7 @@
       {
         "Name": "K32",
         "CreationSize": 220.0,
-        "FinalSize": 10100.4
+        "FinalSize": 101.4
       }
     ],
     "DriveClearers": [
@@ -28,10 +28,10 @@
       "MaxInstances": 3,
       "Command": {
         "PlotSize": "K32",
-        "TotalThreads": 4,
-        "TotalRam": 4000,
+        "TotalThreads": 8,
+        "TotalRam": 8000,
         "Buckets": 128,
-        "PlotCommand": null
+        "PlotCommand": "${{ChiaCommand}}"
       },
       "Work": {
         "Caches": [
@@ -56,12 +56,7 @@
         }
       },
       "Delay": [
-        {
-          "Name": "ProgressFile",
-          "Arguments": {
-            "Filter": "Phase 1 took"
-          }
-        }
+        
       ]
     }
   ],
@@ -70,7 +65,7 @@
       "Alias": "ChiaDriveOne",
       "Directory": "/mnt/g/App/Plots",
       "Priority": 1,
-      "MaxInstances": 1
+      "MaxInstances": 3
     }
   ]
 }

@@ -75,7 +75,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
         public static class Settings
         {
-            public static string ChiaCommand = $"cd /opt/chia-blockchain && . ./activate && chia plots create -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -k {Parameters.PlotSize} -b {Parameters.Ram} -e -r {Parameters.Threads} -u {Parameters.Buckets} -n {Parameters.PlotAmount} -t {Parameters.CacheTwo}/ -2 {Parameters.CacheOne}/ -d {Parameters.Destination}/";
+            public static string ChiaCommand = $"cd /opt/chia-blockchain && . ./activate && chia plots create -e -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -k {Parameters.PlotSize} -b {Parameters.Ram} -r {Parameters.Threads} -u {Parameters.Buckets} -n {Parameters.PlotAmount} -t {Parameters.CacheTwo}/ -2 {Parameters.CacheOne}/ -d {Parameters.Destination}/";
             public static string MadMaxCommand = $"/opt/chia-plotter/build/chia_plot -n {Parameters.PlotAmount} -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/ -2 {Parameters.CacheTwo}/ -d {Parameters.Destination}/ -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
             public static string DefaultCommand = MadMaxCommand;
 
@@ -117,7 +117,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string MadMaxTransferExtensionArg = ".plot.tmp";
 
                 public const string Chia = "Chia";
-                public const string ChiaFilterArg = ".plot";
+                public const string ChiaFilterArg = "plot-";
                 public const string ChiaTransferExtensionArg = ".plot.tmp";
             }
 
@@ -154,12 +154,12 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string Threads = "Threads";
                 public const string Buckets = "Buckets";
                 public const string Ram = "Ram";
-                public const string Destination = "$Destination";
+                public const string Destination = "Destination";
                 public const string PoolKey = "PoolKey";
                 public const string PoolContractAddress = "PoolContractAddress";
                 public const string FarmerKey = "FarmerKey";
 
-                public const string Cache = "$Cache";
+                public const string Cache = "Cache";
 
                 public const string MadMaxCommand = "MadMaxCommand";
                 public const string ChiaCommand = "ChiaCommand";
