@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -7,17 +7,38 @@
     <Authors>Jens Sels</Authors>
     <Company>Homebrew IT</Company>
     <Product>Chia Plot Bot</Product>
-    <Description>Linux systemd for automating the plotting process for the Chia blockchain</Description>
+    <Description>Linux systemd service for automating the plotting process for the Chia blockchain</Description>
+	<EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <DeleteExistingFiles>True</DeleteExistingFiles>
   </PropertyGroup>
 
+	<!--Exclude pdb files from release build-->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<DebugType>None</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+	</PropertyGroup>
+
+	<!--Copy the right appsetting file-->
 	<ItemGroup>
-		<Content Include="Appsettings.json">
+		<Content Include="appsettings.$(Configuration).json">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 		</Content>
 	</ItemGroup>
+	
+	<!--Rename appsetting file after build-->
+	<Target Name="RenameAppSettingsBuild" AfterTargets="AfterBuild" BeforeTargets="Publish">
+		<Move SourceFiles="$(OutDir)\appsettings.$(Configuration).json" DestinationFiles="$(OutDir)\appsettings.json" />
+		<Message Text="Renamed appsettings.$(Configuration).json to appsettings.json" Importance="high" />
+	</Target>
 
-	<ItemGroup>
+	<!--Rename appsetting file after publish-->
+	<Target Name="RenameAppSettingsPublish" AfterTargets="Publish">
+		<Move SourceFiles="$(PublishDir)\appsettings.$(Configuration).json" DestinationFiles="$(PublishDir)\appsettings.json" />
+		<Message Text="Renamed appsettings.$(Configuration).json to appsettings.json" Importance="high" />
+	</Target>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="5.0.1" />
     <PackageReference Include="NLog" Version="4.7.10" />
@@ -29,5 +50,11 @@
 	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core.Unity\Sels.Core.Unity.csproj" />
 	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core\Sels.Core.csproj" />
 	  <ProjectReference Include="..\..\..\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="TestPlotBot.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 </Project>
