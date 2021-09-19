@@ -65,6 +65,7 @@ namespace Sels.Crypto.Chia.PlotBot
             }
             finally
             {
+                NLog.LogManager.Flush();
                 NLog.LogManager.Shutdown();
             }
             
