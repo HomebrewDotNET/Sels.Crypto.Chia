@@ -33,7 +33,7 @@ https://discord.gg/K4a6pwQAyY
 ## Donations
 If you like what I do and want to support me on my future projects, feel free donate me some crypto by sending them to one of the below wallet addresses.
 
-ATOM - cosmos1danhtnw9al7vjrwve5n7ayczjhrzt4sr37wjqw
-ETH - 0x2aC6710b55e6426C09B8dcC2001B1776eB93C5A1
-ADA - addr1q87d8msgu2kn3vps2dkr8egtt8m8jnm0xjyj2f7rued69w9zd79spv6m0pch7kqdyxcsr6fd372j2dhk98q20gj5sdasdrpug6
-XCH - xch1pnzmvf3sdqh56u66q4grrp2jgt7qsphc25cc6z2p8cdvzq3l93jq6h4uwd
+ATOM - cosmos1danhtnw9al7vjrwve5n7ayczjhrzt4sr37wjqw<br/>
+ETH - 0x2aC6710b55e6426C09B8dcC2001B1776eB93C5A1<br/>
+ADA - addr1q87d8msgu2kn3vps2dkr8egtt8m8jnm0xjyj2f7rued69w9zd79spv6m0pch7kqdyxcsr6fd372j2dhk98q20gj5sdasdrpug6<br/>
+XCH - xch1pnzmvf3sdqh56u66q4grrp2jgt7qsphc25cc6z2p8cdvzq3l93jq6h4uwd<br/>
