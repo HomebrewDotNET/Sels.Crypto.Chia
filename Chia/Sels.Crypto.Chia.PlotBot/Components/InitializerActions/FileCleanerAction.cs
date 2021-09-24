@@ -10,7 +10,7 @@ using System.Text;
 
 namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
 {
-    public class TempFileCleanerAction : IPlotBotInitializerAction
+    public class FileCleanerAction : IPlotBotInitializerAction
     {
         public void Handle(Plotter[] plotters, Drive[] drives)
         {
@@ -34,7 +34,6 @@ namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
 
                                 var files = drive.Directory.Source.GetFiles($"*{copyExtension}", SearchOption.AllDirectories).ToArray();
 
-
                                 if (files.HasValue())
                                 {
                                     int deletedFileCount = 0;
@@ -43,8 +42,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
                                     {
                                         if ((DateTime.Now - file.LastWriteTime).TotalMinutes > TimeSpan.FromMinutes(1).TotalMinutes)
                                         {
-                                            LoggingServices.Trace($"Deleting incomplete plot file <{file.FullName}>");
-                                            file.Delete();
+                                            HandleFile(plotter, drive, file);
                                             deletedFileCount++;
                                         }
                                         else
@@ -68,6 +66,20 @@ namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
                     }
                 }
             }
+        }
+
+        protected virtual void HandleFile(Plotter plotter, Drive drive, FileInfo file)
+        {
+            LoggingServices.Trace($"Deleting incomplete plot file <{file.FullName}>");
+            file.Delete();
+        }
+    }
+
+    public class TempFileCleanerAction : FileCleanerAction
+    {
+        protected override void HandleFile(Plotter plotter, Drive drive, FileInfo file)
+        {
+            LoggingServices.Log($"Plot Bot would have deleted incomplete plot <{file.FullName}> from drive <{drive.Alias}> using the setting from Plotter <{plotter.Alias}>");
         }
     }
 }
