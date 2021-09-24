@@ -35,7 +35,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
 
                             foreach (var file in files)
                             {
-                                HandleFile(plotter, file);
+                                HandleFile(plotter, cache, file);
                             }
 
                             LoggingServices.Log($"Deleted {files.Length} files in cache <{cache.Directory.Source.FullName}>");
