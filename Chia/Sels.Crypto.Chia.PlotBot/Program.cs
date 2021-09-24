@@ -115,12 +115,26 @@ namespace Sels.Crypto.Chia.PlotBot
                     // Setup initializer actions
                     if (configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.CleanupCache, false))
                     {
-                        services.AddSingleton<IPlotBotInitializerAction, CacheCleanerAction>();
+                        if (testMode)
+                        {
+                            services.AddSingleton<IPlotBotInitializerAction, TestCacheCleanerAction>();
+                        }
+                        else
+                        {
+                            services.AddSingleton<IPlotBotInitializerAction, CacheCleanerAction>();
+                        }
                     }
 
                     if(configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.CleanupFailedCopy, false))
                     {
-                        services.AddSingleton<IPlotBotInitializerAction, TempFileCleanerAction>();
+                        if (testMode)
+                        {
+                            services.AddSingleton<IPlotBotInitializerAction, TempFileCleanerAction>();
+                        }
+                        else
+                        {
+                            services.AddSingleton<IPlotBotInitializerAction, FileCleanerAction>();
+                        }
                     }
 
                     // Setup service factory
@@ -129,23 +143,23 @@ namespace Sels.Crypto.Chia.PlotBot
                         factory.LoadFrom(services);
 
                         // Progress parsers
-                        factory.Register<IPlotProgressParser, StringPlotProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.String);
-                        factory.Register<IPlotProgressParser, RegexPlotProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.Regex);
-                        factory.Register<IPlotProgressParser, MadMaxProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.MadMax);
-                        factory.Register<IPlotProgressParser, ChiaProgressParser>(ServiceScope.Scoped, PlotBotConstants.Components.PlotProgressParser.Chia);
+                        factory.Register<IPlotProgressParser, StringPlotProgressParser>(ServiceScope.Transient, PlotBotConstants.Components.PlotProgressParser.String);
+                        factory.Register<IPlotProgressParser, RegexPlotProgressParser>(ServiceScope.Transient, PlotBotConstants.Components.PlotProgressParser.Regex);
+                        factory.Register<IPlotProgressParser, MadMaxProgressParser>(ServiceScope.Transient, PlotBotConstants.Components.PlotProgressParser.MadMax);
+                        factory.Register<IPlotProgressParser, ChiaProgressParser>(ServiceScope.Transient, PlotBotConstants.Components.PlotProgressParser.Chia);
 
                         // Plotter delayers
-                        factory.Register<IPlotterDelayer, LastStartedDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.TimeStarted);
-                        factory.Register<IPlotterDelayer, ProgressFileDelayer>(ServiceScope.Scoped, PlotBotConstants.Components.Delay.ProgressFileContains);
+                        factory.Register<IPlotterDelayer, LastStartedDelayer>(ServiceScope.Transient, PlotBotConstants.Components.Delay.TimeStarted);
+                        factory.Register<IPlotterDelayer, ProgressFileDelayer>(ServiceScope.Transient, PlotBotConstants.Components.Delay.ProgressFileContains);
 
                         // Drive clearers
                         if (testMode)
                         {
-                            factory.Register<IDriveSpaceClearer, TestOgPlotDateClearer>(ServiceScope.Scoped, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, TestOgPlotDateClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.OgDate);
                         }
                         else
                         {
-                            factory.Register<IDriveSpaceClearer, OgPlotDateClearer>(ServiceScope.Scoped, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, OgPlotDateClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.OgDate);
                         }
 
                         return factory;
