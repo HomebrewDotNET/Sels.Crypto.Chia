@@ -27,7 +27,7 @@ The service is capable of automatically executing user defined plotting commands
 * Test mode so Plot Bot can be run without actually plotting to validate the configuration
 
 #### Getting started
-Instructions on how to install and configure Plot Bot can be found [here](https://github.com/Jenssels1998/Sels.Crypto.Chia/wiki/Getting-Started#chia-plotter).
+Instructions on how to install and configure Plot Bot can be found [here](https://github.com/Jenssels1998/Sels.Crypto.Chia/wiki/Getting-Started#plot-bot-service).
 
 ## Discord
 Like my projects or just need some help? Join the Discord below for the best way to get in contact with me: <br/>
