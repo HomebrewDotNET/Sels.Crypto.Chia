@@ -35,8 +35,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
 
                             foreach (var file in files)
                             {
-                                LoggingServices.Trace($"Deleting file <{file.FullName}>");
-                                file.Delete();
+                                HandleFile(plotter, file);
                             }
 
                             LoggingServices.Log($"Deleted {files.Length} files in cache <{cache.Directory.Source.FullName}>");
@@ -44,6 +43,20 @@ namespace Sels.Crypto.Chia.PlotBot.Components.InitializerActions
                     }
                 }
             }
+        }
+
+        protected virtual void HandleFile(Plotter plotter, PlotterCache cache, FileInfo file)
+        {
+            LoggingServices.Trace($"Deleting file <{file.FullName}>");
+            file.Delete();
+        }
+    }
+
+    public class TestCacheCleanerAction : CacheCleanerAction
+    {
+        protected override void HandleFile(Plotter plotter, PlotterCache cache, FileInfo file)
+        {
+            LoggingServices.Log($"Plot Bot would have deleted file <{file}> from cache <{cache.Directory.FullName}> for Plotter <{plotter.Alias}>");
         }
     }
 }
