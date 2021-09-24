@@ -244,7 +244,6 @@ namespace Sels.Crypto.Chia.PlotBot
                 drive.Enabled = configDrive.Enabled;
                 drive.Timeout = configDrive.Timeout;
                 drive.MaxInstances = configDrive.MaxInstances;
-                drive.PlotterDelayers = CreateDelayers(configDrive.Delay);
                 drive.Directory = _directoryFactory.Create(configDrive.Directory);
                 drive.Priority = configDrive.Priority;
                 drive.DriveClearers = driveClearers;           

@@ -29,10 +29,5 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// How many instances this component can use.
         /// </summary>
         public int? MaxInstances { get; set; }
-
-        /// <summary>
-        /// Checks if plotter is allowed to plot to a certain drive
-        /// </summary>
-        public IPlotterDelayer[] PlotterDelayers { get; set; }
     }
 }

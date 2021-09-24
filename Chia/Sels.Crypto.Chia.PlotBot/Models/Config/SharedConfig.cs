@@ -28,10 +28,5 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// How many instances this component can use.
         /// </summary>
         public int? MaxInstances { get; set; }
-
-        /// <summary>
-        /// Contains config on when a new instance is allowed to plot to a drive.
-        /// </summary>
-        public ComponentConfig[] Delay { get; set; }
     }
 }

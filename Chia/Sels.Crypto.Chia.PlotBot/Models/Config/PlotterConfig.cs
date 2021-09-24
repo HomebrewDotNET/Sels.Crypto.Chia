@@ -24,6 +24,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         /// </summary>
         public PlotterWorkingConfig Work { get; set; }
 
+        /// <summary>
+        /// Contains config on when a new instance is allowed to plot to a drive.
+        /// </summary>
+        public ComponentConfig[] Delay { get; set; }
+
         // Statics
         /// <summary>
         /// Default instance.
@@ -31,6 +36,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models.Config
         public static PlotterConfig Default => new PlotterConfig()
         {
             Alias = "MainPlotter",
+            Timeout = 12,
             Command = PlotterCommandConfig.Default,
             MaxInstances = PlotBotConstants.Settings.Plotters.DefaultInstances,
             Progress = new ComponentConfig()
