@@ -71,6 +71,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// Component that extracts information from the progress file.
         /// </summary>
         public IPlotProgressParser PlotProgressParser { get; set; }
+
+        /// <summary>
+        /// Checks if plotter is allowed to plot to a certain drive
+        /// </summary>
+        public IPlotterDelayer[] PlotterDelayers { get; set; }
         #endregion
 
         #region PlotterWorkingSettings
@@ -161,7 +166,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using var logger = LoggingServices.TraceMethod(this);
             drive.ValidateArgument(nameof(drive));
 
-            var delayers = drive.PlotterDelayers.HasValue() ? drive.PlotterDelayers : PlotterDelayers;
+            var delayers = PlotterDelayers;
 
             var canPlot = CanPlotNew && (delayers.HasValue() ? delayers.All(x => x.CanStartInstance(this, drive)) : true) && drive.CanBePlotted(PlotSize.FinalSize);
 
