@@ -5,8 +5,11 @@ This repository is meant to house current/future projects that are related to fa
 These are my current projects for helping with plotting and farming on the Chia Blockchain
 
 ### Plot Bot
-Plot Bot is a Linux systemd service for automating the plotting of drives managed from a single json configuration file.
+Plot Bot is a Linux systemd service for automating the plotting of drives managed from a single json configuration file. <br/>
 The service is capable of automatically executing user defined plotting commands (using shell/bash) so it doesn't rely on a specific plotter like MadMax or the official one from the Chia dev team.
+
+**Extended testing using Ubuntu 20.04.3 on my personal plotting vm. Should work with any Debian based distro. For other distro's I need some testers to confirm it works**
+**Could work on Windows using WSL2. Need some testers to confirm and help me write instructions. I personally developed and tested the code using WSL2 on my Windows machine**
 
 #### Features
 * Single json configuration file that can be modified without having to restart the service so no plotting effort is lost
@@ -24,14 +27,14 @@ The service is capable of automatically executing user defined plotting commands
 * Test mode so Plot Bot can be run without actually plotting to validate the configuration
 
 #### Getting started
-Instructions on how to install and configure Plot Bot can be found here: TODO Wiki
+Instructions on how to install and configure Plot Bot can be found [here](https://github.com/Jenssels1998/Sels.Crypto.Chia/wiki/Getting-Started#chia-plotter).
 
 ## Discord
-Like my projects or just need some help? Join the Discord below for the best way to get in contact with me:
+Like my projects or just need some help? Join the Discord below for the best way to get in contact with me: <br/>
 https://discord.gg/K4a6pwQAyY
 
 ## Donations
-If you like what I do and want to support me on my future projects, feel free donate me some crypto by sending them to one of the below wallet addresses.
+If you like what I do and want to support me on my future projects, feel free donate me some crypto by sending them to one of the below wallet addresses. <br/>
 
 ATOM - cosmos1danhtnw9al7vjrwve5n7ayczjhrzt4sr37wjqw<br/>
 ETH - 0x2aC6710b55e6426C09B8dcC2001B1776eB93C5A1<br/>
