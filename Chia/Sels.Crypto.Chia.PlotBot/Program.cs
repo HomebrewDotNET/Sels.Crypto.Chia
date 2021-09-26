@@ -156,10 +156,14 @@ namespace Sels.Crypto.Chia.PlotBot
                         if (testMode)
                         {
                             factory.Register<IDriveSpaceClearer, TestOgPlotDateClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, TestOgPlotByteClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.OgByte);
+                            factory.Register<IDriveSpaceClearer, TestZeroByteClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.ZeroByte);
                         }
                         else
                         {
                             factory.Register<IDriveSpaceClearer, OgPlotDateClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.OgDate);
+                            factory.Register<IDriveSpaceClearer, OgPlotByteClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.OgByte);
+                            factory.Register<IDriveSpaceClearer, ZeroByteClearer>(ServiceScope.Transient, PlotBotConstants.Components.Clearer.ZeroByte);
                         }
 
                         return factory;

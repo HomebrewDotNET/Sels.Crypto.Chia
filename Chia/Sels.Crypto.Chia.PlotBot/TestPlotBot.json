@@ -8,10 +8,16 @@
       {
         "Name": "K32",
         "CreationSize": 220.0,
-        "FinalSize": 101.4
+        "FinalSize": 10100.4
       }
     ],
     "DriveClearers": [
+      {
+        "Name": "OgByte",
+        "Arguments": {
+          "AdditionalDrives": "/mnt/c/; /mnt/g/"
+        }
+      },
       {
         "Name": "OgDate",
         "Arguments": {
