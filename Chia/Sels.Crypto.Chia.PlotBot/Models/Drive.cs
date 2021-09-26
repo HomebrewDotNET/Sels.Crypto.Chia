@@ -73,10 +73,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         }
 
         /// <summary>
-        /// Checks if this drive be plotted to. Tries to free up extra space until we have enough free space for <paramref name="size"/>
+        /// Checks if this drive be plotted to. Tries to free up extra disk space until we have enough free disk space for <paramref name="size"/>
         /// </summary>
-        /// <param name="size">Needed free space</param>
-        /// <returns>True if enough free space is available</returns>
+        /// <param name="size">Needed free disk space</param>
+        /// <returns>True if enough free disk space is available</returns>
         public bool CanBePlotted(FileSize size)
         {
             using var logger = LoggingServices.TraceMethod(this);
@@ -112,7 +112,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
 
             if (!enoughSpace)
             {
-                LoggingServices.Log(LogLevel.Debug, $"Drive {Alias} does not have enough free size available. Needs {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} but only has {AvailableFreeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}");
+                LoggingServices.Log(LogLevel.Debug, $"Drive {Alias} does not have enough free disk space available. Needs {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} but only has {AvailableFreeSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}");
             }
 
             return enoughSpace;
