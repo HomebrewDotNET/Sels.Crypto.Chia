@@ -32,6 +32,9 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
         private readonly IFactory<CrossPlatformDirectory> _directoryFactory;
 
         // Properties
+        /// <summary>
+        /// Additional drives to check when searching for clearable files
+        /// </summary>
         public string AdditionalDrives
         {
             get
@@ -47,6 +50,11 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
                 }
             }
         }
+
+        /// <summary>
+        /// Filter used to search for files by matching the file name against this filter.
+        /// </summary>
+        protected virtual string FileFilter => PlotFilter;
 
         public BaseClearer(IFactory<CrossPlatformDirectory> directoryFactory)
         {
@@ -64,22 +72,26 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
             var freeSpace = drive.AvailableFreeSize;
             FileSize deletedSize = new SingleByte(0);
 
-            LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize<GibiByte>()} free");
+            LoggingServices.Trace($"Drive {drive.Alias} has {freeSpace.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} free");
 
+            var deleteFiles = 0;
             foreach (var clearableFile in GetClearableFiles(drive, requiredSize))
             {
                 var fileSize = clearableFile.GetFileSize<GibiByte>();
 
                 HandleClearableFile(drive, requiredSize, clearableFile, fileSize);
+                deleteFiles++;
                 deletedSize += fileSize;
 
                 if (deletedSize + freeSpace >= requiredSize)
                 {
-                    LoggingServices.Log($"Freed up {deletedSize.ToSize<GibiByte>()} on Drive {drive.Alias}");
+                    LoggingServices.Log($"Freed up {deletedSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} on Drive {drive.Alias} by deleting <{deleteFiles}> files");
 
                     return true;
                 }
             }
+
+            LoggingServices.Debug($"Could not free up {requiredSize.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)} for Drive {drive.Alias} after deleting <{deleteFiles}> files");
 
             return false;
         }
@@ -90,14 +102,14 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
 
             // Seach drive root first
             LoggingServices.Debug($"Seaching drive {drive.Alias} for clearable files");
-            var plots = GetClearableFiles(drive, requiredSize, drive.Directory);
+            var files = GetClearableFiles(drive, requiredSize, drive.Directory);
 
-            foreach (var plot in plots)
+            foreach (var file in files)
             {
-                yield return plot;
+                yield return file;
             }
 
-            if (AdditionalDrives.HasValue())
+            if (_additionalDirectories.HasValue())
             {
                 var mointPoint = drive.Directory.MountPoint;
                 LoggingServices.Debug($"Seaching additional drives for drive {drive.Alias} that have the same mount point. Moint point is <{mointPoint}>");
@@ -109,9 +121,9 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
                     {
                         LoggingServices.Debug($"Seaching additional drive {directory.FullName} for clearable files");
 
-                        foreach (var plot in GetClearableFiles(drive, requiredSize, directory))
+                        foreach (var file in GetClearableFiles(drive, requiredSize, directory))
                         {
-                            yield return plot;
+                            yield return file;
                         }
                     }
                 }
@@ -126,31 +138,31 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            var plots = directory.Source.GetFiles(PlotFilter, SearchOption.AllDirectories);
+            var files = directory.Source.GetFiles(FileFilter, SearchOption.AllDirectories);
 
-            LoggingServices.Log(LogLevel.Debug, $"{_loggerName} found {plots.Length} plots to check");
+            LoggingServices.Log(LogLevel.Debug, $"{_loggerName} found {files.Length} files to check");
 
-            if (plots.HasValue())
+            if (files.HasValue())
             {
-                foreach (var plot in plots)
+                foreach (var file in files)
                 {
-                    if (IsClearablePlot(drive, requiredSize, plot))
+                    if (IsClearableFile(drive, requiredSize, file))
                     {
-                        yield return plot;
+                        yield return file;
                     }
                 }
             }
         }
 
-        protected virtual void HandleClearableFile(Drive drive, FileSize requiredFreeSpace, FileInfo plot, FileSize plotSize)
+        protected virtual void HandleClearableFile(Drive drive, FileSize requiredFreeSpace, FileInfo file, FileSize fileSize)
         {
             using var logger = LoggingServices.TraceMethod(this);
-            LoggingServices.Log($"Clearing {plot.FullName} of size {plotSize} on drive {drive.Alias}");
-            plot.Delete();
+            LoggingServices.Log($"Clearing {file.FullName} of size {fileSize} on drive {drive.Alias}");
+            file.Delete();
         }
 
         // Abstractions
-        protected abstract bool IsClearablePlot(Drive drive, FileSize requiredFreeSpace, FileInfo plot);
+        protected abstract bool IsClearableFile(Drive drive, FileSize requiredFreeSpace, FileInfo file);
         public abstract IDriveSpaceClearer Validate();
     }
 }

@@ -32,7 +32,7 @@ namespace Sels.Crypto.Chia.PlotBot.Components.DriveClearers
             return this;
         }
 
-        protected override bool IsClearablePlot(Drive drive, FileSize requiredFreeSpace, FileInfo plot)
+        protected override bool IsClearableFile(Drive drive, FileSize requiredFreeSpace, FileInfo plot)
         {
             using var logger = LoggingServices.TraceMethod(this);
 

@@ -128,6 +128,8 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string OgDateThresholdArg = "07/07/2021";
 
                 public const string OgByte = "OgByte";
+
+                public const string ZeroByte = "ZeroByte";
             }
 
             public static class Delay
