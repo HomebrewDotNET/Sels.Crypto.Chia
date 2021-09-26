@@ -8,8 +8,11 @@ These are my current projects for helping with plotting and farming on the Chia 
 Plot Bot is a Linux systemd service for automating the plotting of drives managed from a single json configuration file. <br/>
 The service is capable of automatically executing user defined plotting commands (using shell/bash) so it doesn't rely on a specific plotter like MadMax or the official one from the Chia dev team.
 
-**Extended testing using Ubuntu 20.04.3 on my personal plotting vm. Should work with any Debian based distro. For other distro's I need some testers to confirm it works**
-**Could work on Windows using WSL2. Need some testers to confirm and help me write instructions. I personally developed and tested the code using WSL2 on my Windows machine**
+**Extended testing using Ubuntu 20.04.3 on my personal plotting vm. <br />
+Should work with any Debian based distro. For other distro's I need some testers to confirm it works.** <br />
+
+**Could work on Windows using WSL2. Need some testers to confirm and help me write instructions. <br />
+I personally developed and tested the code using WSL2 on my Windows machine**
 
 #### Features
 * Single json configuration file that can be modified without having to restart the service so no plotting effort is lost
