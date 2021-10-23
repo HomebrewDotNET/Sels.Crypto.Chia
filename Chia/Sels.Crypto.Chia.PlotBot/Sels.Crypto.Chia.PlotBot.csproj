@@ -43,14 +43,11 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="5.0.1" />
     <PackageReference Include="NLog" Version="4.7.10" />
     <PackageReference Include="NLog.Extensions.Logging" Version="1.7.3" />
+    <PackageReference Include="Sels.Core" Version="1.*-*" />
+    <PackageReference Include="Sels.Core.Linux" Version="1.*-*" />
+    <PackageReference Include="Sels.Core.Unity" Version="1.*-*" />
+    <PackageReference Include="Sels.ObjectValidationFramework" Version="1.*-*" />
   </ItemGroup>
-
-	<ItemGroup>
-	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core.Linux\Sels.Core.Linux.csproj" />
-	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core.Unity\Sels.Core.Unity.csproj" />
-	  <ProjectReference Include="..\..\..\Sels.Core\Sels.Core\Sels.Core.csproj" />
-	  <ProjectReference Include="..\..\..\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework\Sels.ObjectValidationFramework.csproj" />
-	</ItemGroup>
 
 	<ItemGroup>
 	  <None Update="TestPlotBot.json">
