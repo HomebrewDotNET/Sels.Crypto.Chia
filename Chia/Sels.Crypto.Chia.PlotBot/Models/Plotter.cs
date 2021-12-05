@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Sels.Core.Templates.FileSystem;
 using Sels.Core.Templates.FileSizes;
 using Sels.Core.Extensions.Conversion;
+using Sels.Core.Extensions.Execution;
 
 namespace Sels.Crypto.Chia.PlotBot.Models
 {
@@ -22,6 +23,7 @@ namespace Sels.Crypto.Chia.PlotBot.Models
     public class Plotter : SharedSettings, IDisposable
     {
         // Fields
+        private readonly bool _validatePlotCommand;
         private readonly IPlottingService _plottingService;
         private readonly List<PlottingInstance> _plottingInstances = new List<PlottingInstance>();
 
@@ -116,9 +118,10 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         public bool TaggedForDeletion { get; set; }
         #endregion
 
-        public Plotter(IPlottingService plottingService)
+        public Plotter(IPlottingService plottingService, bool validatePlotCommand)
         {
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
+            _validatePlotCommand = validatePlotCommand;
         }
 
         /// <summary>
@@ -239,6 +242,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             using (LoggingServices.TraceAction(LogLevel.Debug, "Applying command parameters"))
             {
                 plotCommand = parameterizer.Apply(PlotCommand);
+            }
+
+            if(_validatePlotCommand && (plotCommand.Contains(Parameterizer.ParameterPrefix.Value) || plotCommand.Contains(Parameterizer.ParameterSuffix.Value)))
+            {
+                throw new InvalidOperationException($"Plot command <{plotCommand}> contained either <{Parameterizer.ParameterPrefix.Value}> or <{Parameterizer.ParameterSuffix.Value}>. Check if all parameters are correctly named. If this is intentional you can disable this check using <{PlotBotConstants.Config.AppSettings.ValidatePlotCommand}>");
             }
 
             LoggingServices.Debug($"{Alias} creating instance to plot to {drive.Alias}");

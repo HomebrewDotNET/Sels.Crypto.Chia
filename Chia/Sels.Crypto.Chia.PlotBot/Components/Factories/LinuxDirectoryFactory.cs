@@ -13,11 +13,11 @@ namespace Sels.Crypto.Chia.PlotBot.Components.Factories
 {
     public class LinuxDirectoryFactory : GenericFactory<CrossPlatformDirectory>
     {
-        protected override TInstance CreateNewInstance<TInstance>(params object[] arguments)
+        protected override CrossPlatformDirectory CreateNewInstance<TInstance>(params object[] arguments)
         {
             using var logger = LoggingServices.TraceMethod(this);
             LoggingServices.Trace($"Creating new instance of {typeof(TInstance)} using {(arguments.HasValue() ? arguments.JoinString(";") : "no arguments")}");
-            return base.CreateNewInstance<LinuxDirectory>(arguments).As<TInstance>();
+            return base.CreateNewInstance<LinuxDirectory>(arguments);
         }
     }
 }

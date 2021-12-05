@@ -11,6 +11,7 @@ using Sels.Core.Contracts.Configuration;
 using Sels.Core;
 using Sels.Core.Contracts.Factory;
 using Sels.Core.Components.Logging;
+using Sels.ObjectValidationFramework.Templates.Profile;
 
 namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
 {
@@ -21,67 +22,65 @@ namespace Sels.Crypto.Chia.PlotBot.ValidationProfiles
 
         public ConfigValidationProfile(IServiceFactory factory)
         {
-            CreateValidator<PlotBotConfig>()
-                .IfNull(() => $"{PlotBotName} configuration cannot be empty or whitespace")
-                .CannotBeNull(x => x.Settings, x => $"{x.Property.Name} section must be defined")
-                .MustContainAtLeast(x => x.Plotters, 1, x => $"{x.Property.Name} must contain at least {1} Plotter")
-                .AllElementsMustBeUnique(x => x.Plotters, x => x.Alias, x => $"Plotter {nameof(PlotterConfig.Alias)} must be unique between all plotters.")
-                .AllElementsMustBeUnique(x => x.Drives, x => x.Alias, x => $"Drive {nameof(DriveConfig.Alias)} must be unique between all drives.")
-                .AddInvalidValidation(x => x.Plotters.Any(p => !x.Settings.PlotSizes.Select(x => x.Name).Contains(p.Command.PlotSize)), x => $"Plotter contained a {nameof(PlotterCommandConfig.PlotSize)} that wasn't defined in {nameof(x.Settings)}.{nameof(x.Settings.PlotSizes)}");
+            CreateValidationFor<PlotBotConfig>()
+                .ForProperty(x => x.Settings).CannotBeNull(x => $"{x.GetDisplayName()} section must be defined")
+                .ForProperty(x => x.Plotters).MustContainAtLeast(1, x => $"{x.GetDisplayName()} must contain at least {1} Plotter")
+                .ForProperty(x => x.Plotters, x => x.Select(p => p.Alias)).AllMustBeUnique(x => $"Plotter {nameof(PlotterConfig.Alias)} must be unique between all plotters.")
+                .ForProperty(x => x.Drives, x => x.Select(d => d.Alias)).AllMustBeUnique(x => $"Drive {nameof(DriveConfig.Alias)} must be unique between all drives.")
+                .ForProperty(x => x.Plotters).InvalidIf(x => x.Value.Any(p => !x.Source.Settings.PlotSizes.Select(x => x.Name).Contains(p.Command.PlotSize)), x => $"Plotter contained a {nameof(PlotterCommandConfig.PlotSize)} that wasn't defined in {nameof(x.Source.Settings)}.{nameof(x.Source.Settings.PlotSizes)}");
 
-            CreateValidator<PlotBotSettingsConfig>()
-                .AddInvalidValidation(x => !x.PoolKey.HasValue() && !x.PoolContractAddress.HasValue(), x => $"Either {nameof(x.PoolKey)} or {nameof(x.PoolContractAddress)} needs to be defined")
-                .CannotBeNullOrWhiteSpace(x => x.FarmerKey, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .CannotBeNullOrWhiteSpace(x => x.DefaultPlotCommand, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .MustContainAtLeast(x => x.PlotSizes, 1, x => $"{x.Property.Name} must contain at least 1 Plot Size")
-                .AddValidCollectionValidation(x => x.DriveClearers, x => factory.IsRegistered<IDriveSpaceClearer>(x.Name), x => $"{x.Property.Name} is not a known clearer. Was <{x.ElementValue}>");
+            CreateValidationFor<PlotBotSettingsConfig>()
+                .ForSource().InvalidIf(x => !x.Value.PoolKey.HasValue() && !x.Value.PoolContractAddress.HasValue(), x => $"Either {nameof(x.Value.PoolKey)} or {nameof(x.Value.PoolContractAddress)} needs to be defined")
+                .ForProperty(x => x.FarmerKey).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.DefaultPlotCommand).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.PlotSizes).MustContainAtLeast(1, x => $"{x.GetDisplayName()} must contain at least 1 Plot Size")
+                .ForElements(x => x.DriveClearers).ValidIf(x => factory.IsRegistered<IDriveSpaceClearer>(x.Value.Name), x => $"{x.GetDisplayName()} is not a known clearer. Was <{x.Value}>");
 
-            CreateValidator<PlotSizeConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .MustBePositive(x => x.CreationSize, x => $"{x.Property.Name} must be larger than 0. Was <{x.PropertyValue}>")
-                .MustBePositive(x => x.FinalSize, x => $"{x.Property.Name} must be larger than 0. Was <{x.PropertyValue}>");
+            CreateValidationFor<PlotSizeConfig>()
+                .ForProperty(x => x.Name).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.CreationSize).MustBeLargerThan(0, x => $"{x.GetDisplayName()} must be larger than 0. Was <{x.Value}>")
+                .ForProperty(x => x.FinalSize).MustBeLargerThan(0, x => $"{x.GetDisplayName()} must be larger than 0. Was <{x.Value}>");
 
-            CreateValidator<PlotterCommandConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.PlotSize, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .AddValidValidation(x => x.TotalThreads, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
-                .AddValidValidation(x => x.TotalRam, x => x >= 1000, x => $"{x.Property.Name} must be equal or above 1000")
-                .AddValidValidation(x => x.Buckets, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1");
+            CreateValidationFor<PlotterCommandConfig>()
+                .ForProperty(x => x.PlotSize).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.TotalThreads).MustBeLargerOrEqualTo(1, x => $"{x.GetDisplayName()} must be equal or above 1")
+                .ForProperty(x => x.TotalRam).MustBeLargerOrEqualTo(1000, x => $"{x.GetDisplayName()} must be equal or above 1000")
+                .ForProperty(x => x.Buckets).MustBeLargerOrEqualTo(1, x => $"{x.GetDisplayName()} must be equal or above 1");
 
-            CreateValidator<PlotterConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.Alias, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .AddValidValidation(x => x.MaxInstances, x => x >= 1, x => $"{x.Property.Name} must be equal or above 1")
-                .CannotBeNull(x => x.Progress, x => $"{x.Property.Name} section must be defined")
-                .CannotBeNull(x => x.Work, x => $"{x.Property.Name} section must be defined")
-                .AddValidValidation(x => x.Progress, x => factory.IsRegistered<IPlotProgressParser>(x.Name), x => $"{x.Property.Name} is not a known file name seeker. Was <{x.PropertyValue}>")
-                .AddValidCollectionValidation(x => x.Delay, x => factory.IsRegistered<IPlotterDelayer>(x.Name), x => $"{x.Property.Name} is not a known delayer. Was <{x.ElementValue}>");
+            CreateValidationFor<PlotterConfig>()
+                .ForProperty(x => x.Alias).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.MaxInstances).ValidIf(x => x!= null && x.Value >= 1, x => $"{x.GetDisplayName()} must be equal or above 1")
+                .ForProperty(x => x.Progress).CannotBeNull(x => $"{x.GetDisplayName()} section must be defined")
+                .ForProperty(x => x.Work).CannotBeNull(x => $"{x.GetDisplayName()} section must be defined")
+                .ForProperty(x => x.Progress).ValidIf(x => factory.IsRegistered<IPlotProgressParser>(x.Value.Name), x => $"{x.GetDisplayName()} is not a known file name seeker. Was <{x.Value}>")
+                .ForElements(x => x.Delay).ValidIf(x => factory.IsRegistered<IPlotterDelayer>(x.Value.Name), x => $"{x.GetDisplayName()} is not a known delayer. Was <{x.Value}>");
 
-            CreateValidator<PlotterWorkingConfig>()
-                .CannotBeEmpty(x => x.Caches, x => $"{x.Property.Name} must contain at least 1 cache ")
-                .CannotBeNullOrWhiteSpace(x => x.WorkingDirectory, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .IsValidDirectory(x => x.WorkingDirectory, x => $"{x.Property.Name} must be valid directory. Was <{x.PropertyValue}>");
+            CreateValidationFor<PlotterWorkingConfig>()
+                .ForProperty(x => x.Caches).CannotBeEmpty(x => $"{x.GetDisplayName()} must contain at least 1 cache ")
+                .ForProperty(x => x.WorkingDirectory).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.WorkingDirectory).MustBeValidPath(x => $"{x.GetDisplayName()} must be valid directory. Was <{x.Value}>");
 
-            CreateValidator<PlotterCacheConfig>()
-                .AddValidValidation(x => x.Directory, x => x.HasValue() && Directory.Exists(x), x => $"Cache directory cannot be empty or whitespace and the directory must exist. Was <{x.PropertyValue}>")
-                .AddValidValidation(x => x.Distribution, x => x > 0, x => $"Cache distribution must be larger than 0. Was <{x.PropertyValue}>");
+            CreateValidationFor<PlotterCacheConfig>()
+                .ForProperty(x => x.Directory).MustBeExistingPath(x => $"{x.GetDisplayName()} cannot be empty or whitespace and the directory must exist. Was <{x.Value}>")
+                .ForProperty(x => x.Distribution).MustBeLargerThan(0, x => $"{x.GetDisplayName()} must be larger than 0. Was <{x.Value}>");
 
-            CreateValidator<SharedConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.Alias, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .AddValidValidation(x => x.Timeout, x => !x.HasValue || x.Value > 0, x => $"{x.Property.Name} must be above 0. Was <{x.PropertyValue}>");
+            CreateValidationFor<SharedConfig>()
+                .ForProperty(x => x.Alias).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.Timeout).ValidIf(x => !x.Value.HasValue || x.Value > 0, x => $"{x.GetDisplayName()} must be above 0. Was <{x.Value}>");
 
-            CreateValidator<ComponentConfig>()
-                .CannotBeNullOrWhiteSpace(x => x.Name, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>") 
-                .CannotBeNull(x => x.Arguments, x => $"{x.Property.Name} must be defined")
-                .AddValidCollectionValidation(x => x.Arguments, x => x.Key.HasValue(), x => $"Argument key cannot be empty or whitespace. Was <{x.ElementValue}>");
+            CreateValidationFor<ComponentConfig>()
+                .ForProperty(x => x.Name).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} cannot be empty or whitespace. Was <{x.Value}>")
+                .ForProperty(x => x.Arguments).CannotBeNull(x => $"{x.GetDisplayName()} must be defined")
+                .ForElements(x => x.Arguments, x => x.Key).CannotBeNullOrWhitespace(x => $"{x.GetDisplayName()} key cannot be empty or whitespace. Was <{x.Value}>");
 
-            CreateValidator<DriveConfig>()                
-                .CannotBeNullOrWhiteSpace(x => x.Directory, x => $"{x.Property.Name} cannot be empty or whitespace. Was <{x.PropertyValue}>")
-                .IsValidDirectory(x => x.Directory, x => $"{x.Property.Name} must be valid directory. Was <{x.PropertyValue}>");
+            CreateValidationFor<DriveConfig>()
+                .ForProperty(x => x.Directory).MustBeExistingPath(x => $"{x.GetDisplayName()} must be valid directory. Was <{x.Value}>");
         }
 
         public IEnumerable<string> Validate(PlotBotConfig config)
         {
             using var logger = LoggingServices.TraceMethod(this);
-            return ObjectValidator.Validate(this, config, typeof(PlotBotConfig));
+            return Validate(config, default);
         }
     }
 }

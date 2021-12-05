@@ -19,12 +19,16 @@ using Sels.Core.Contracts.Conversion;
 using Sels.Core.Templates.FileSystem;
 using System.IO;
 using System.Threading;
+using Sels.Core.Extensions.Execution;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
     public class PlotBot : IDisposable
     {
         // Fields
+        private readonly object _lock = new object();
+        private readonly bool _validatePlotCommand;
+        private readonly int _driveClearerIdleTime;
         private readonly IFactory<CrossPlatformDirectory> _directoryFactory;
         private readonly IServiceFactory _serviceFactory;
         private readonly IGenericTypeConverter _typeConverter;
@@ -44,20 +48,75 @@ namespace Sels.Crypto.Chia.PlotBot
         /// </summary>
         public List<Plotter> Plotters { get; private set; } = new List<Plotter>();
         /// <summary>
-        /// Drives that plot bot needs to fill up
+        /// Drives that plot bot needs to fill up.
         /// </summary>
         public List<Drive> Drives { get; private set; } = new List<Drive>();
 
-        public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IServiceFactory serviceFactory, IGenericTypeConverter typeConverter, IPlottingService plottingService, IEnumerable<IPlotBotInitializerAction> initializerActions = null)
+        public PlotBot(IFactory<CrossPlatformDirectory> directoryFactory, IServiceFactory serviceFactory, IGenericTypeConverter typeConverter, IPlottingService plottingService, int driveClearerIdleTime = 60, bool validatePlotCommand = true, IEnumerable<IPlotBotInitializerAction> initializerActions = null)
         {
             _directoryFactory = directoryFactory.ValidateArgument(nameof(directoryFactory));
             _serviceFactory = serviceFactory.ValidateArgument(nameof(serviceFactory));
             _typeConverter = typeConverter.ValidateArgument(nameof(typeConverter));
             _plottingService = plottingService.ValidateArgument(nameof(plottingService));
+            _driveClearerIdleTime = driveClearerIdleTime;
+            _validatePlotCommand = validatePlotCommand;
             _initializerActions = initializerActions;
         }
 
-        public PlotBotResult Plot(CancellationToken token = default)
+        /// <summary>
+        /// Tries to start new plotting instances if it is allowed according to <see cref="CanStartNewInstances"/> and has enough resources.
+        /// </summary>
+        /// <param name="token">Token to request the cancellation of the execution of this method</param>
+        /// <returns>All names of the started instances or null if nothing was started</returns>
+        public string[] Plot(CancellationToken token = default)
+        {
+            using var logger = LoggingServices.TraceMethod(this);
+            var startedInstances = new List<string>();
+
+            // Start up new instances
+            if (CanStartNewInstances)
+            {
+                lock (_lock)
+                {
+                    // Start up new plotting instances
+                    using (LoggingServices.TraceAction(LogLevel.Debug, "Start plotting"))
+                    {
+                        foreach (var plotter in Plotters.Where(x => x.CanPlot()))
+                        {
+                            foreach (var drive in Drives.Where(x => x.Enabled).OrderByDescending(x => x.HasEnoughSpaceFor(plotter.PlotSize.FinalSize)).ThenBy(x => x.Priority))
+                            {
+                                if (token.IsCancellationRequested) return startedInstances.ToArray();
+
+                                while (!token.IsCancellationRequested && plotter.CanPlotToDrive(drive))
+                                {
+                                    startedInstances.Add(plotter.PlotToDrive(drive).Name);
+                                }
+
+                                if (!plotter.CanPlot())
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    return startedInstances.ToArray();
+                }
+            }
+            else
+            {
+                LoggingServices.Debug($"{PlotBotConstants.LoggerName} not allowed to start new instances");
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Handles completed, timed out plotting instances and returns info of the currently running plots.
+        /// </summary>
+        /// <param name="token">Token to request the cancellation of the execution of this method</param>
+        /// <returns>Result with what has happened and information about running instances</returns>
+        public PlotBotResult HandlePlots(CancellationToken token = default)
         {
             using var logger = LoggingServices.TraceMethod(this);
             var result = new PlotBotResult();
@@ -91,12 +150,15 @@ namespace Sels.Crypto.Chia.PlotBot
 
             if (token.IsCancellationRequested) return result;
 
-            // Delete completed plotters
-            using (LoggingServices.TraceAction(LogLevel.Debug, "Delete completed plotters"))
+            lock (_lock)
             {
-                var deletablePlotters = Plotters.Where(x => !x.HasRunningInstances && x.TaggedForDeletion);
-                deletablePlotters.ForceExecute(x => { Plotters.Remove(x); x.Dispose(); }, (x, ex) => LoggingServices.Log($"Something went wrong when disposing {x.Alias}", ex));
-                result.DeletedPlotters = deletablePlotters.Count();
+                // Delete completed plotters
+                using (LoggingServices.TraceAction(LogLevel.Debug, "Delete completed plotters"))
+                {
+                    var deletablePlotters = Plotters.Where(x => !x.HasRunningInstances && x.TaggedForDeletion);
+                    deletablePlotters.ForceExecute(x => { Plotters.Remove(x); x.Dispose(); }, (x, ex) => LoggingServices.Log($"Something went wrong when disposing {x.Alias}", ex));
+                    result.DeletedPlotters = deletablePlotters.Count();
+                }
             }
 
             if (token.IsCancellationRequested) return result;
@@ -104,45 +166,11 @@ namespace Sels.Crypto.Chia.PlotBot
             // Get info on running instances
             using (LoggingServices.TraceAction(LogLevel.Debug, "Get info running instances"))
             {
-                result.RunningInstances = Plotters.SelectMany(x => x.Instances).Where(x => x.IsPlotting).Select(x => new PlotBotInstance(x)).ToArray();                
+                result.RunningInstances = Plotters.SelectMany(x => x.Instances).Where(x => x.IsPlotting).Select(x => new PlotBotInstance(x)).ToArray();
             }
 
             if (token.IsCancellationRequested) return result;
-
-            // Start up new instances
-            if (CanStartNewInstances)
-            {
-                var startedInstances = new List<string>();
-
-                // Start up new plotting instances
-                using (LoggingServices.TraceAction(LogLevel.Debug, "Start plotting"))
-                {
-                    foreach (var plotter in Plotters.Where(x => x.CanPlot()))
-                    {
-                        foreach (var drive in Drives.Where(x => x.Enabled).OrderByDescending(x => x.HasEnoughSpaceFor(plotter.PlotSize.FinalSize)).ThenBy(x => x.Priority))
-                        {
-                            if (token.IsCancellationRequested) return result;
-
-                            while (!token.IsCancellationRequested && plotter.CanPlotToDrive(drive))
-                            {
-                                startedInstances.Add(plotter.PlotToDrive(drive).Name);
-                            }
-
-                            if (!plotter.CanPlot())
-                            {
-                                break;
-                            }                            
-                        }                        
-                    }
-                }
-
-                result.StartedInstances = startedInstances.ToArray();
-            }
-            else
-            {
-                LoggingServices.Debug($"{PlotBotConstants.LoggerName} not allowed to start new instances");
-            }
-
+            
             return result;
         }
 
@@ -150,16 +178,19 @@ namespace Sels.Crypto.Chia.PlotBot
         {
             using var logger = LoggingServices.TraceMethod(this);
 
-            LoggingServices.Log("Reloading config");
-
-            ReloadPlotters(config);
-            ReloadDrives(config);
-
-            if(!_initialized && _initializerActions.HasValue())
+            lock (_lock)
             {
-                _initializerActions.ForceExecute(x => x.Handle(Plotters.ToArray(), Drives.ToArray()), (x, ex) => LoggingServices.Log(LogLevel.Warning ,$"Initializer action <{x.GetType().Name}> ran into an issue when executing", ex));
+                LoggingServices.Log("Reloading config");
 
-                _initialized = true;
+                ReloadPlotters(config);
+                ReloadDrives(config);
+
+                if (!_initialized && _initializerActions.HasValue())
+                {
+                    _initializerActions.ForceExecute(x => x.Handle(Plotters.ToArray(), Drives.ToArray()), (x, ex) => LoggingServices.Log(LogLevel.Warning, $"Initializer action <{x.GetType().Name}> ran into an issue when executing", ex));
+
+                    _initialized = true;
+                }
             }
         }
 
@@ -183,7 +214,7 @@ namespace Sels.Crypto.Chia.PlotBot
                 var plotSize = new PlotSize() { Name = configPlotSize.Name, CreationSize = FileSize.CreateFromSize<GibiByte>(configPlotSize.CreationSize), FinalSize = FileSize.CreateFromSize<GibiByte>(configPlotSize.FinalSize) };
 
                 var isNew = !existingPlotter.HasValue();
-                var plotter = isNew ? new Plotter(_plottingService) : existingPlotter;
+                var plotter = isNew ? new Plotter(_plottingService, _validatePlotCommand) : existingPlotter;
 
                 plotter.Enabled = configPlotter.Enabled;
                 plotter.Timeout = configPlotter.Timeout;
@@ -238,7 +269,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
                 var isNew = !existingDrive.HasValue();
 
-                var drive = isNew ? new Drive() : existingDrive;
+                var drive = isNew ? new Drive(_driveClearerIdleTime) : existingDrive;
 
                 drive.Alias = configDrive.Alias;
                 drive.Enabled = configDrive.Enabled;
@@ -273,6 +304,7 @@ namespace Sels.Crypto.Chia.PlotBot
             }).ToArrayOrDefault();
         }
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             using var logger = LoggingServices.TraceMethod(this);
@@ -288,9 +320,8 @@ namespace Sels.Crypto.Chia.PlotBot
 
     public class PlotBotResult
     {
-        public string[] CreatedPlots { get; set; } = new string[0];
-        public string[] StartedInstances { get; set; } = new string[0];
-        public PlotBotInstance[] RunningInstances { get; set; } = new PlotBotInstance[0];
+        public string[] CreatedPlots { get; set; }
+        public PlotBotInstance[] RunningInstances { get; set; }
         public int DeletedPlotters { get; set; }
     }
 

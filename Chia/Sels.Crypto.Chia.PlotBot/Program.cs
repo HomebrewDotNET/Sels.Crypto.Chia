@@ -38,6 +38,8 @@ using Sels.Crypto.Chia.PlotBot.Components.PlotProgressParsers;
 using Sels.Crypto.Chia.PlotBot.Components.Factories;
 using Sels.Crypto.Chia.PlotBot.Components.Services;
 using Sels.Crypto.Chia.PlotBot.Components.InitializerActions;
+using Sels.Core.Cron.Components.ScheduledAction;
+using Sels.Core.Components.ScheduledAction;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
@@ -51,15 +53,9 @@ namespace Sels.Crypto.Chia.PlotBot
             try
             {
                 NLog.LogManager.AutoShutdown = false;
-                // Set appsetting directory
-                if (args.Length > 0)
-                {
-                    Directory.SetCurrentDirectory(args[0]);
-                }
-                else
-                {
-                    Helper.App.SetCurrentDirectoryToExecutingAssembly();
-                }
+
+                // Set current directory 
+                Directory.SetCurrentDirectory(AppContext.BaseDirectory);
 
                 CreateHostBuilder(args).Build().Run();
             }
@@ -80,10 +76,9 @@ namespace Sels.Crypto.Chia.PlotBot
                     services.AddSingleton(x => Helper.App.BuildDefaultConfigurationFile());
 
                     // Register services
-                    services.AddSingleton<PlotBot>();
                     services.AddSingleton<IConfigProvider, ConfigProvider>();
                     services.AddSingleton<IPlotBotConfigValidator, ConfigValidationProfile>();
-                    services.AddSingleton<IFactory<CrossPlatformDirectory>, LinuxDirectoryFactory>();
+                    if (OperatingSystem.IsLinux()) { services.AddSingleton<IFactory<CrossPlatformDirectory>, LinuxDirectoryFactory>(); } else { services.AddSingleton<IFactory<CrossPlatformDirectory>, WindowsDirectoryFactory>(); }
                     services.AddSingleton<IObjectFactory, AliasTypeFactory>(x => {
                         return new AliasTypeFactory(x.GetRequiredService<IConfigProvider>(), GenericConverter.DefaultConverter);
                     });
@@ -101,19 +96,31 @@ namespace Sels.Crypto.Chia.PlotBot
                     // Check test mode services
                     var testMode = configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.TestMode, false);
 
+                    // Load service settings
+                    var interval = configProvider.GetAppSetting<int?>(PlotBotConstants.Config.AppSettings.Interval, false, x => x == null || x > 0, x => $"{PlotBotConstants.Config.AppSettings.Interval} must be larger than 0") ?? 60000;
+                    var plottingInterval = configProvider.GetAppSetting(PlotBotConstants.Config.AppSettings.PlottingInterval, false) ?? "* * * * *";
+                    var retryOnFailed = configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.RetryAfterFailed, false);
+                    var reduceIdleMessages = configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.RetryAfterFailed, false);
+                    var validatePlotCommand = configProvider.GetAppSetting<bool?>(PlotBotConstants.Config.AppSettings.ValidatePlotCommand, false) ?? true;
+                    var driveClearerIdleTime = configProvider.GetAppSetting<int?>(PlotBotConstants.Config.AppSettings.DriveClearersIdleTime, false, x => x == null || x > 0, x => $"{PlotBotConstants.Config.AppSettings.DriveClearersIdleTime} must be larger than 0") ?? 60;
+
+                    services.AddSingleton(x => {
+                        return new PlotBot(x.GetRequiredService<IFactory<CrossPlatformDirectory>>(), x.GetRequiredService<IServiceFactory>(), x.GetRequiredService<IGenericTypeConverter>(), x.GetRequiredService<IPlottingService>(), driveClearerIdleTime, validatePlotCommand, x.GetServices<IPlotBotInitializerAction>());
+                    });
+
                     if (testMode)
                     {
-                        services.AddHostedService<TestPlotBotManager>();
-                        services.AddSingleton<IPlottingService, TestLinuxPlottingService>();
+                        services.AddHostedService(x => new TestPlotBotManager(x.GetRequiredService<ILoggerFactory>(), x.GetRequiredService<IConfigProvider>(), x.GetRequiredService<IPlotBotConfigValidator>(), x.GetRequiredService<PlotBot>(), new RecurringCronAction(plottingInterval), new RecurringTimerAction(interval), retryOnFailed, reduceIdleMessages));
+                        if (OperatingSystem.IsLinux()) { services.AddSingleton<IPlottingService, TestLinuxPlottingService>(); } else { services.AddSingleton<IPlottingService, WindowsPlottingService>(); }                        
                     }
                     else
                     {
-                        services.AddHostedService<PlotBotManager>();
-                        services.AddSingleton<IPlottingService, LinuxPlottingService>();
+                        services.AddHostedService(x => new PlotBotManager(x.GetRequiredService<ILoggerFactory>(), x.GetRequiredService<IConfigProvider>(), x.GetRequiredService<IPlotBotConfigValidator>(), x.GetRequiredService<PlotBot>(), new RecurringCronAction(plottingInterval), new RecurringTimerAction(interval), retryOnFailed, reduceIdleMessages));
+                        if (OperatingSystem.IsLinux()) { services.AddSingleton<IPlottingService, LinuxPlottingService>(); } else { services.AddSingleton<IPlottingService, WindowsPlottingService>(); }                      
                     }
 
                     // Setup initializer actions
-                    if (configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.CleanupCache, false))
+                    if(configProvider.GetAppSetting<bool>(PlotBotConstants.Config.AppSettings.CleanupCache, false))
                     {
                         if (testMode)
                         {
