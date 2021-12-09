@@ -1,15 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6</TargetFramework>
     <UserSecretsId>dotnet-Sels.Crypto.Chia.PlotBot-AE9C3215-1CA9-41A6-BA0E-5EB24098DF8A</UserSecretsId>
-    <Version>0.2.0</Version>
+    <Version>1.0.0</Version>
     <Authors>Jens Sels</Authors>
     <Company>Homebrew IT</Company>
     <Product>Chia Plot Bot</Product>
     <Description>Linux systemd service for automating the plotting process for the Chia blockchain</Description>
 	<EnableDefaultContentItems>false</EnableDefaultContentItems>
     <DeleteExistingFiles>True</DeleteExistingFiles>
+    <AssemblyName>plotbot</AssemblyName>
   </PropertyGroup>
 
 	<!--Exclude pdb files from release build-->
@@ -43,14 +44,15 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="5.0.1" />
     <PackageReference Include="NLog" Version="4.7.10" />
     <PackageReference Include="NLog.Extensions.Logging" Version="1.7.3" />
-    <PackageReference Include="Sels.Core" Version="1.*-*" />
-    <PackageReference Include="Sels.Core.Linux" Version="1.*-*" />
-    <PackageReference Include="Sels.Core.Unity" Version="1.*-*" />
-    <PackageReference Include="Sels.ObjectValidationFramework" Version="1.*-*" />
+    <PackageReference Include="Sels.Core" Version="3.*-*" />
+    <PackageReference Include="Sels.Core.Cron" Version="1.*-*" />
+    <PackageReference Include="Sels.Core.Linux" Version="2.*-*" />
+    <PackageReference Include="Sels.Core.Unity" Version="2.*-*" />
+    <PackageReference Include="Sels.ObjectValidationFramework" Version="3.*-*" />
   </ItemGroup>
 
 	<ItemGroup>
-	  <None Update="TestPlotBot.json">
+	  <None Update="TestPlotBot.json" Condition="'$(Configuration)' == 'Debug'">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
 	</ItemGroup>

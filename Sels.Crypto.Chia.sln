@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31424.327
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chia", "Chia", "{7F43ACB0-4330-4C54-A50C-4F59228DBF0A}"
 EndProject
@@ -20,6 +20,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation", "Presentatio
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{38D28AA3-FD80-41AF-B25F-05582AB17476}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Deployment", "Deployment", "{9FA6CB72-6057-4459-A46A-4EA317FBFD22}"
+	ProjectSection(SolutionItems) = preProject
+		Infrastructure\Deployment\Packaging.xml = Infrastructure\Deployment\Packaging.xml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +41,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1EE07E0B-9969-4384-8F22-961F316AC8C2} = {7F43ACB0-4330-4C54-A50C-4F59228DBF0A}
+		{9FA6CB72-6057-4459-A46A-4EA317FBFD22} = {38D28AA3-FD80-41AF-B25F-05582AB17476}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FD25389E-D21F-439A-B419-885FFD2C6596}

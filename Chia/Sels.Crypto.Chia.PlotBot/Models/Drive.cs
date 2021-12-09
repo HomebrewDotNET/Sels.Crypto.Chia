@@ -19,6 +19,8 @@ namespace Sels.Crypto.Chia.PlotBot.Models
     public class Drive : SharedSettings
     {
         // Fields
+        private DateTime? _lastIdleTime;
+        private int _clearIdleTime;
         private readonly List<PlottingInstance> _plottingInstances = new List<PlottingInstance>();
 
         /// <summary>
@@ -47,6 +49,11 @@ namespace Sels.Crypto.Chia.PlotBot.Models
         /// Indicates if this drive has any current instances plotting to it.
         /// </summary>
         public bool HasRunningInstances => _plottingInstances.HasValue();
+
+        public Drive(int clearIdleTime)
+        {
+            _clearIdleTime = clearIdleTime.ValidateArgumentLargerOrEqual(nameof(clearIdleTime), 1); 
+        }
 
         /// <summary>
         /// Checks if thid drive has enough space for <paramref name="size"/>.
@@ -96,11 +103,23 @@ namespace Sels.Crypto.Chia.PlotBot.Models
             {
                 if (!enoughSpace && DriveClearers.HasValue())
                 {
+                    var allowedClearTime = _lastIdleTime.HasValue ? _lastIdleTime.Value.AddMinutes(_clearIdleTime) : default;
+                    // Only check drive clearers if we either weren't idle last time or when we passed the idle time
+                    if (_lastIdleTime.HasValue && allowedClearTime < _lastIdleTime.Value)
+                    {
+                        LoggingServices.Debug($"Drive clearers for Drive {Alias} were idle at <{_lastIdleTime.Value}> and will be allowed to run again at <{allowedClearTime}>");
+                    }
+
                     LoggingServices.Debug($"Drive {Alias} does not enough free disk space for {size.ToSize(PlotBotConstants.Logging.DefaultLoggingFileSize)}. Trying to clear disk space with drive clearers");
                     if (DriveClearers.Any(x => x.ClearSpace(this, size)))
                     {
                         LoggingServices.Log($"Drive {Alias} has cleared extra space");
+                        _lastIdleTime = null;
                         return true;
+                    }
+                    else
+                    {
+                        _lastIdleTime = DateTime.Now;
                     }
                 }
             }

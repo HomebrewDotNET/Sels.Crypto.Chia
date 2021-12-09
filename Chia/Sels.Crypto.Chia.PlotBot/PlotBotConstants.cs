@@ -48,9 +48,14 @@ namespace Sels.Crypto.Chia.PlotBot
                 public const string TestMode = "Service.TestMode";
                 public const string ConfigFile = "Service.ConfigFile";
                 public const string Interval = "Service.Interval";
+                public const string PlottingInterval = "Service.PlottingInterval";
+                public const string RetryAfterFailed = "Service.RetryAfterFailed";
+                public const string ReduceIdleMessage = "Service.ReduceIdleMessages";
 
                 public const string CleanupCache = "Service.PlotBot.CleanupCache";
                 public const string CleanupFailedCopy = "Service.PlotBot.CleanupFailedCopy";
+                public const string DriveClearersIdleTime = "Service.PlotBot.DriveClearers.IdleTime";
+                public const string ValidatePlotCommand = "Service.PlotBot.ValidatePlotCommand";
             }
 
             public static class LogSettings
@@ -76,7 +81,7 @@ namespace Sels.Crypto.Chia.PlotBot
         public static class Settings
         {
             public static string ChiaCommand = $"cd /opt/chia-blockchain && . ./activate && chia plots create -e -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -k {Parameters.PlotSize} -b {Parameters.Ram} -r {Parameters.Threads} -u {Parameters.Buckets} -n {Parameters.PlotAmount} -t {Parameters.CacheTwo}/ -2 {Parameters.CacheOne}/ -d {Parameters.Destination}/";
-            public static string MadMaxCommand = $"/opt/chia-plotter/build/chia_plot -n {Parameters.PlotAmount} -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/ -2 {Parameters.CacheTwo}/ -d {Parameters.Destination}/ -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
+            public static string MadMaxCommand = $"/opt/chia-plotter/build/chia_plot -n {Parameters.PlotAmount} -r {Parameters.Threads} -u {Parameters.Buckets} -t {Parameters.CacheOne}/ -d {Parameters.Destination}/ -f {Parameters.FarmerKey} -c {Parameters.PoolContractAddress} -w";
             public static string DefaultCommand = MadMaxCommand;
 
             public static class Plotters
