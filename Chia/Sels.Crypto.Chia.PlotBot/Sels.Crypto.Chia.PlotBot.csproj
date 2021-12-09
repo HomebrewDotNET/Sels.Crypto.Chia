@@ -10,7 +10,7 @@
     <Description>Linux systemd service for automating the plotting process for the Chia blockchain</Description>
 	<EnableDefaultContentItems>false</EnableDefaultContentItems>
     <DeleteExistingFiles>True</DeleteExistingFiles>
-    <AssemblyName>PlotBot</AssemblyName>
+    <AssemblyName>plotbot</AssemblyName>
   </PropertyGroup>
 
 	<!--Exclude pdb files from release build-->

@@ -1,0 +1,3 @@
+<Packages>
+	<Package Os="linux" Architecture="x64" SelfContained="true" Name="PlotBot">Sels.Crypto.Chia.PlotBot.csproj</Package>
+</Packages>
