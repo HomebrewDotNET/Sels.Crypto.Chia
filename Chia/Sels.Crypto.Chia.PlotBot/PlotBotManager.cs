@@ -20,18 +20,24 @@ using Sels.Core.Components.FileSystem;
 using Sels.Core.Contracts.Factory;
 using Sels.Core;
 using Sels.Core.Components.RecurrentAction;
+using Sels.Core.Extensions.Execution;
+using Sels.Core.Contracts.ScheduledAction;
 
 namespace Sels.Crypto.Chia.PlotBot
 {
     public class PlotBotManager : IHostedService
     {
         // Fields
-        private readonly RepeatingActionManager<bool> _actionManager = new RepeatingActionManager<bool>();
+        private readonly bool _retryOnFailedPlotting;
+        private readonly bool _reduceIdleMessages;
+        private readonly IScheduledAction _plotterAction;
+        private readonly IScheduledAction _checkPlotterAction;
         private readonly IPlotBotConfigValidator _configValidator;
 
         // State
         private string _configHash;
         private PlotBot _plotBot;
+        private bool _wasIdle;
 
         // Properties
         /// <summary>
@@ -43,11 +49,18 @@ namespace Sels.Crypto.Chia.PlotBot
         /// </summary>
         public int PollingInterval { get; private set; }
 
-        public PlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator, PlotBot plotBot)
+        public PlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator, PlotBot plotBot, IScheduledAction plotterAction, IScheduledAction checkPlotterAction, bool retryOnFailedPlotting = false, bool reduceIdleMessages = false)
         {
             factory.ValidateArgument(nameof(factory));
             _configValidator = configValidator.ValidateArgument(nameof(configValidator));
             _plotBot = plotBot.ValidateArgument(nameof(plotBot));
+            _plotterAction = plotterAction.ValidateArgument(nameof(plotterAction));
+            _plotterAction.Action = Plot;
+            _checkPlotterAction = checkPlotterAction.ValidateArgument(nameof(checkPlotterAction));
+            _checkPlotterAction.Action = CheckPlots;
+
+            _retryOnFailedPlotting = retryOnFailedPlotting;
+            _reduceIdleMessages = reduceIdleMessages;
 
             SetupLogging(factory.CreateLogger(PlotBotConstants.LoggerName));
             LoadServiceConfig(configProvider.ValidateArgument(nameof(configProvider)));
@@ -96,13 +109,46 @@ namespace Sels.Crypto.Chia.PlotBot
             }
         }
 
-        protected void ExecuteAsync(CancellationToken stoppingToken)
+        private void Plot(CancellationToken token = default)
         {
             using var logger = LoggingServices.TraceMethod(this);
 
             try
             {
-                using (LoggingServices.TraceAction(LogLevel.Debug, $"{PlotBotConstants.ServiceName} started processing", x => $"{PlotBotConstants.ServiceName} finished processing in {x.PrintTotalMs()}"))
+                using (LoggingServices.TraceAction(LogLevel.Debug, $"{PlotBotConstants.ServiceName} trying to plot", x => $"{PlotBotConstants.ServiceName} finished trying to plot in {x.PrintTotalMs()}"))
+                {                  
+                    var startedInstances = _plotBot.Plot(token);
+
+                    if (startedInstances.HasValue())
+                    {
+                        startedInstances.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} started instance {x}"));
+                    }
+                    else
+                    {
+                        LoggingServices.Debug($"No new instances started");
+                    }                   
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_retryOnFailedPlotting)
+                {
+                    LoggingServices.Log(LogLevel.Error, $"{PlotBotConstants.ServiceName} ran into a fatal error when trying to plot. Will retry later", ex);
+                }
+                else
+                {
+                    LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} ran into a fatal error when trying to plot. No new instances will be started", ex);
+                }
+            }
+        }
+
+        private void CheckPlots(CancellationToken token = default)
+        {
+            using var logger = LoggingServices.TraceMethod(this);
+
+            try
+            {
+                using (LoggingServices.TraceAction(LogLevel.Debug, $"{PlotBotConstants.ServiceName} checking plots", x => $"{PlotBotConstants.ServiceName} finished checking plots in {x.PrintTotalMs()}"))
                 {
                     if (DoesConfigNeedToBeReloaded())
                     {
@@ -130,7 +176,7 @@ namespace Sels.Crypto.Chia.PlotBot
                         }
                     }
 
-                    var result = _plotBot.Plot(stoppingToken);
+                    var result = _plotBot.HandlePlots(token);
 
                     result.CreatedPlots.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} created {x}"));
 
@@ -139,18 +185,27 @@ namespace Sels.Crypto.Chia.PlotBot
                         LoggingServices.Log($"{PlotBotConstants.ServiceName} removed {result.DeletedPlotters} plotters");
                     }
 
-                    result.StartedInstances.Execute(x => LoggingServices.Log($"{PlotBotConstants.ServiceName} started instance {x}"));
-
                     result.RunningInstances.Execute(x => LoggingServices.Log($"Instance {x.Name} is creating {x.PlotName} of size {x.PlotSize} and has been running for {x.StartTime.GetMinuteDifference()} minutes{(x.TimeoutDate.HasValue() ? $" and will timeout in {x.TimeoutDate.Value.GetMinuteDifference()} minutes" : "")}"));
 
-                    if (!result.StartedInstances.HasValue() && !result.RunningInstances.HasValue()) LoggingServices.Log($"{PlotBotConstants.ServiceName} is idle");
+                    var isIdle = !result.RunningInstances.HasValue();
+
+                    if (isIdle)
+                    {
+                        if (_reduceIdleMessages && _wasIdle) return;
+
+                        LoggingServices.Log($"{PlotBotConstants.ServiceName} is idle");
+                        _wasIdle = true;                        
+                    }
+                    else
+                    {
+                        _wasIdle = false;
+                    }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                LoggingServices.Log(LogLevel.Critical, $"{PlotBotConstants.ServiceName} ran into a fatal error when plotting. Plot bot won't start new instances but will let the current instances finish", ex);
-                _plotBot.CanStartNewInstances = false;
-            }            
+                LoggingServices.Log(LogLevel.Error, $"{PlotBotConstants.ServiceName} ran into a fatal error when checking up on plots", ex);
+            }
         }
 
         private PlotBotConfig LoadPlotBotConfig()
@@ -226,9 +281,8 @@ namespace Sels.Crypto.Chia.PlotBot
                     {
                         LoggingServices.Log($"{PlotBotConstants.ServiceName} successfully initialized");
 
-                        _actionManager.AddRecurrentAction(true, PollingInterval, (x, y) => ExecuteAsync(y), (id, method, ex) => LoggingServices.Log($"{PlotBotConstants.ServiceName} ran into issue while executing", ex), null);
-
-                        _actionManager.StartAll();
+                        _checkPlotterAction.ExecuteAndStart();
+                        _plotterAction.ExecuteAndStart();
                     }
                     else
                     {
@@ -257,7 +311,8 @@ namespace Sels.Crypto.Chia.PlotBot
                 {
                     using(LoggingServices.TraceAction($"Shutting down {PlotBotConstants.ServiceName}", x => $"Shut down {PlotBotConstants.ServiceName} in {x.PrintTotalMs()}"))
                     {
-                        _actionManager.StopAndWaitAll();
+                        if(_plotterAction.IsRunning) _plotterAction.Stop();
+                        if (_checkPlotterAction.IsRunning) _checkPlotterAction.Stop();
 
                         _plotBot.TryDispose(x => LoggingServices.Log($"Plot Bot could not be properly disposed", x));
                     }                   
@@ -274,7 +329,7 @@ namespace Sels.Crypto.Chia.PlotBot
 
     public class TestPlotBotManager : PlotBotManager
     {
-        public TestPlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator, PlotBot plotBot) : base(factory, configProvider, configValidator, plotBot)
+        public TestPlotBotManager(ILoggerFactory factory, IConfigProvider configProvider, IPlotBotConfigValidator configValidator, PlotBot plotBot, IScheduledAction plotterAction, IScheduledAction checkPlotterAction, bool retryOnFailedPlotting = false, bool reduceIdleMessages = false) : base(factory, configProvider, configValidator, plotBot, plotterAction, checkPlotterAction, retryOnFailedPlotting, reduceIdleMessages)
         {
             SendTestLogs();
         }
@@ -284,7 +339,7 @@ namespace Sels.Crypto.Chia.PlotBot
             LoggingServices.Log(LogLevel.Information, $"This is a test message from {PlotBotConstants.ServiceName}");
             LoggingServices.Log(LogLevel.Warning, $"This is a warning test from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
             LoggingServices.Log(LogLevel.Error, $"This is an error test from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
-            LoggingServices.Log(LogLevel.Critical, $"This is a fatal error mail from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
+            LoggingServices.Log(LogLevel.Critical, $"This is a fatal error test from {PlotBotConstants.ServiceName}", new Exception("Hello! I'm a test error message, no need to be alarmed!"));
         }
     }
 }
