@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Packages>
-	<Package Os="linux" Architecture="x64" SelfContained="true" Name="PlotBot">Sels.Crypto.Chia.PlotBot.csproj</Package>
+	<Package Name="PlotBot" Os="linux" Architecture="x64" SelfContained="true" BuildArguments="PublishSingleFile=true,PublishReadyToRun=true">Sels.Crypto.Chia.PlotBot.csproj</Package>
 </Packages>
